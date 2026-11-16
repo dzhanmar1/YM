@@ -343,83 +343,90 @@ pub async fn cmd_load_equalizer() -> Result<Option<String>, String> {
 /// Hide main window, show mini player window positioned at bottom-right
 #[tauri::command]
 pub fn cmd_show_mini_player(app: AppHandle) -> Result<(), String> {
-    if let Some(mini_win) = app.get_webview_window("mini") {
-        let width = 420.0;
-        let height = 165.0;
-        let _ = mini_win.set_size(tauri::Size::Logical(tauri::LogicalSize { width, height }));
-        let _ = mini_win.set_always_on_top(true);
+    #[cfg(desktop)]
+    {
+        if let Some(mini_win) = app.get_webview_window("mini") {
+            let width = 420.0;
+            let height = 165.0;
+            let _ = mini_win.set_size(tauri::Size::Logical(tauri::LogicalSize { width, height }));
+            let _ = mini_win.set_always_on_top(true);
 
-        if let Ok(Some(monitor)) = mini_win.current_monitor() {
-            let scale = monitor.scale_factor();
-            let mon_size = monitor.size();
-            let mon_pos = monitor.position();
-            let mon_w = mon_size.width as f64 / scale;
-            let mon_h = mon_size.height as f64 / scale;
-            let mon_x = mon_pos.x as f64 / scale;
-            let mon_y = mon_pos.y as f64 / scale;
+            if let Ok(Some(monitor)) = mini_win.current_monitor() {
+                let scale = monitor.scale_factor();
+                let mon_size = monitor.size();
+                let mon_pos = monitor.position();
+                let mon_w = mon_size.width as f64 / scale;
+                let mon_h = mon_size.height as f64 / scale;
+                let mon_x = mon_pos.x as f64 / scale;
+                let mon_y = mon_pos.y as f64 / scale;
 
-            let init_x = mon_x + mon_w - width - 20.0;
-            let init_y = mon_y + mon_h - height - 64.0;
+                let init_x = mon_x + mon_w - width - 20.0;
+                let init_y = mon_y + mon_h - height - 64.0;
 
-            #[cfg(target_os = "windows")]
-            let mut applied = false;
-            #[cfg(target_os = "windows")]
-            {
-                if let Ok(hwnd) = mini_win.hwnd() {
-                    let phys_x = (init_x * scale).round() as i32;
-                    let phys_y = (init_y * scale).round() as i32;
-                    let phys_w = (width * scale).round() as i32;
-                    let phys_h = (height * scale).round() as i32;
+                #[cfg(target_os = "windows")]
+                let mut applied = false;
+                #[cfg(target_os = "windows")]
+                {
+                    if let Ok(hwnd) = mini_win.hwnd() {
+                        let phys_x = (init_x * scale).round() as i32;
+                        let phys_y = (init_y * scale).round() as i32;
+                        let phys_w = (width * scale).round() as i32;
+                        let phys_h = (height * scale).round() as i32;
 
-                    extern "system" {
-                        fn SetWindowPos(
-                            hwnd: *mut std::ffi::c_void,
-                            hwnd_insert_after: *mut std::ffi::c_void,
-                            x: i32,
-                            y: i32,
-                            cx: i32,
-                            cy: i32,
-                            u_flags: u32,
-                        ) -> i32;
+                        extern "system" {
+                            fn SetWindowPos(
+                                hwnd: *mut std::ffi::c_void,
+                                hwnd_insert_after: *mut std::ffi::c_void,
+                                x: i32,
+                                y: i32,
+                                cx: i32,
+                                cy: i32,
+                                u_flags: u32,
+                            ) -> i32;
+                        }
+
+                        // SWP_NOZORDER (0x0004) | SWP_NOACTIVATE (0x0010)
+                        unsafe {
+                            SetWindowPos(
+                                hwnd.0 as *mut std::ffi::c_void,
+                                std::ptr::null_mut(),
+                                phys_x,
+                                phys_y,
+                                phys_w,
+                                phys_h,
+                                0x0004 | 0x0010,
+                            );
+                        }
+                        applied = true;
                     }
+                }
 
-                    // SWP_NOZORDER (0x0004) | SWP_NOACTIVATE (0x0010)
-                    unsafe {
-                        SetWindowPos(
-                            hwnd.0 as *mut std::ffi::c_void,
-                            std::ptr::null_mut(),
-                            phys_x,
-                            phys_y,
-                            phys_w,
-                            phys_h,
-                            0x0004 | 0x0010,
-                        );
-                    }
-                    applied = true;
+                #[cfg(target_os = "windows")]
+                if !applied {
+                    let _ = mini_win.set_position(tauri::Position::Logical(tauri::LogicalPosition { x: init_x, y: init_y }));
+                    let _ = mini_win.set_size(tauri::Size::Logical(tauri::LogicalSize { width, height }));
+                }
+
+                #[cfg(not(target_os = "windows"))]
+                {
+                    let _ = mini_win.set_position(tauri::Position::Logical(tauri::LogicalPosition { x: init_x, y: init_y }));
+                    let _ = mini_win.set_size(tauri::Size::Logical(tauri::LogicalSize { width, height }));
                 }
             }
 
-            #[cfg(target_os = "windows")]
-            if !applied {
-                let _ = mini_win.set_position(tauri::Position::Logical(tauri::LogicalPosition { x: init_x, y: init_y }));
-                let _ = mini_win.set_size(tauri::Size::Logical(tauri::LogicalSize { width, height }));
-            }
-
-            #[cfg(not(target_os = "windows"))]
-            {
-                let _ = mini_win.set_position(tauri::Position::Logical(tauri::LogicalPosition { x: init_x, y: init_y }));
-                let _ = mini_win.set_size(tauri::Size::Logical(tauri::LogicalSize { width, height }));
-            }
+            let _ = mini_win.set_always_on_top(true);
+            mini_win.show().map_err(|e| e.to_string())?;
+            mini_win.set_focus().map_err(|e| e.to_string())?;
+            let _ = mini_win.unminimize();
+            let _ = mini_win.emit("mini-show", ());
         }
-
-        let _ = mini_win.set_always_on_top(true);
-        mini_win.show().map_err(|e| e.to_string())?;
-        mini_win.set_focus().map_err(|e| e.to_string())?;
-        let _ = mini_win.unminimize();
-        let _ = mini_win.emit("mini-show", ());
+        if let Some(main_win) = app.get_webview_window("main") {
+            main_win.hide().map_err(|e| e.to_string())?;
+        }
     }
-    if let Some(main_win) = app.get_webview_window("main") {
-        main_win.hide().map_err(|e| e.to_string())?;
+    #[cfg(not(desktop))]
+    {
+        let _ = app;
     }
     Ok(())
 }
@@ -427,37 +434,49 @@ pub fn cmd_show_mini_player(app: AppHandle) -> Result<(), String> {
 /// Hide mini player window, show main window
 #[tauri::command]
 pub fn cmd_hide_mini_player(app: AppHandle) -> Result<(), String> {
-    if let Some(main_win) = app.get_webview_window("main") {
-        let _ = main_win.unminimize();
-        main_win.show().map_err(|e| e.to_string())?;
-        main_win.set_focus().map_err(|e| e.to_string())?;
+    #[cfg(desktop)]
+    {
+        if let Some(main_win) = app.get_webview_window("main") {
+            let _ = main_win.unminimize();
+            main_win.show().map_err(|e| e.to_string())?;
+            main_win.set_focus().map_err(|e| e.to_string())?;
+        }
+        if let Some(mini_win) = app.get_webview_window("mini") {
+            let _ = mini_win.hide();
+        }
     }
-    if let Some(mini_win) = app.get_webview_window("mini") {
-        let _ = mini_win.hide();
+    #[cfg(not(desktop))]
+    {
+        let _ = app;
     }
     Ok(())
 }
 
 /// Relay an action from mini window → emit event to main window
-/// The main window's playerStore listens and handles the action
 #[tauri::command]
 pub fn cmd_mini_action(app: AppHandle, action: String, payload: Option<String>) -> Result<(), String> {
     let event_payload = serde_json::json!({ "action": action, "payload": payload });
     let _ = app.emit("mini-action", &event_payload);
-    if let Some(main_win) = app.get_webview_window("main") {
-        let _ = main_win.emit("mini-action", &event_payload);
+    #[cfg(desktop)]
+    {
+        if let Some(main_win) = app.get_webview_window("main") {
+            let _ = main_win.emit("mini-action", &event_payload);
+        }
     }
     Ok(())
 }
 
-/// Emit current player state to mini window (called from main window frontend)
+/// Emit current player state to mini window
 #[tauri::command]
 pub fn cmd_emit_player_state(app: AppHandle, state_json: String) -> Result<(), String> {
     let val: serde_json::Value = serde_json::from_str(&state_json)
         .map_err(|e| e.to_string())?;
     let _ = app.emit("player-state", &val);
-    if let Some(mini_win) = app.get_webview_window("mini") {
-        let _ = mini_win.emit("player-state", &val);
+    #[cfg(desktop)]
+    {
+        if let Some(mini_win) = app.get_webview_window("mini") {
+            let _ = mini_win.emit("player-state", &val);
+        }
     }
     Ok(())
 }
@@ -470,79 +489,99 @@ pub fn cmd_emit_player_time(app: AppHandle, current_time: f64, active_line_index
         "activeLineIndex": active_line_index,
     });
     let _ = app.emit("player-time", &payload);
-    if let Some(mini_win) = app.get_webview_window("mini") {
-        let _ = mini_win.emit("player-time", &payload);
+    #[cfg(desktop)]
+    {
+        if let Some(mini_win) = app.get_webview_window("mini") {
+            let _ = mini_win.emit("player-time", &payload);
+        }
     }
     Ok(())
 }
 
-
 /// Resize mini window to given logical dimensions
 #[tauri::command]
 pub fn cmd_resize_mini(app: AppHandle, width: f64, height: f64) -> Result<(), String> {
-    if let Some(win) = app.get_webview_window("mini") {
-        win.set_size(tauri::Size::Logical(tauri::LogicalSize { width, height }))
-            .map_err(|e| e.to_string())?;
+    #[cfg(desktop)]
+    {
+        if let Some(win) = app.get_webview_window("mini") {
+            win.set_size(tauri::Size::Logical(tauri::LogicalSize { width, height }))
+                .map_err(|e| e.to_string())?;
+        }
+    }
+    #[cfg(not(desktop))]
+    {
+        let _ = app;
+        let _ = width;
+        let _ = height;
     }
     Ok(())
 }
 
 #[tauri::command]
 pub fn cmd_resize_mini_anchored(app: AppHandle, width: f64, height: f64) -> Result<(), String> {
-    if let Some(win) = app.get_webview_window("mini") {
-        let factor = win.scale_factor().unwrap_or(1.0);
-        if let (Ok(curr_pos), Ok(curr_size)) = (win.outer_position(), win.outer_size()) {
-            let curr_logical_w = curr_size.width as f64 / factor;
-            let curr_logical_h = curr_size.height as f64 / factor;
-            let curr_logical_x = curr_pos.x as f64 / factor;
-            let curr_logical_y = curr_pos.y as f64 / factor;
+    #[cfg(desktop)]
+    {
+        if let Some(win) = app.get_webview_window("mini") {
+            let factor = win.scale_factor().unwrap_or(1.0);
+            if let (Ok(curr_pos), Ok(curr_size)) = (win.outer_position(), win.outer_size()) {
+                let curr_logical_w = curr_size.width as f64 / factor;
+                let curr_logical_h = curr_size.height as f64 / factor;
+                let curr_logical_x = curr_pos.x as f64 / factor;
+                let curr_logical_y = curr_pos.y as f64 / factor;
 
-            let new_logical_y = curr_logical_y + (curr_logical_h - height);
-            let new_logical_x = curr_logical_x + (curr_logical_w - width);
+                let new_logical_y = curr_logical_y + (curr_logical_h - height);
+                let new_logical_x = curr_logical_x + (curr_logical_w - width);
 
-            #[cfg(target_os = "windows")]
-            {
-                if let Ok(hwnd) = win.hwnd() {
-                    let phys_x = (new_logical_x * factor).round() as i32;
-                    let phys_y = (new_logical_y * factor).round() as i32;
-                    let phys_w = (width * factor).round() as i32;
-                    let phys_h = (height * factor).round() as i32;
+                #[cfg(target_os = "windows")]
+                {
+                    if let Ok(hwnd) = win.hwnd() {
+                        let phys_x = (new_logical_x * factor).round() as i32;
+                        let phys_y = (new_logical_y * factor).round() as i32;
+                        let phys_w = (width * factor).round() as i32;
+                        let phys_h = (height * factor).round() as i32;
 
-                    extern "system" {
-                        fn SetWindowPos(
-                            hwnd: *mut std::ffi::c_void,
-                            hwnd_insert_after: *mut std::ffi::c_void,
-                            x: i32,
-                            y: i32,
-                            cx: i32,
-                            cy: i32,
-                            u_flags: u32,
-                        ) -> i32;
+                        extern "system" {
+                            fn SetWindowPos(
+                                hwnd: *mut std::ffi::c_void,
+                                hwnd_insert_after: *mut std::ffi::c_void,
+                                x: i32,
+                                y: i32,
+                                cx: i32,
+                                cy: i32,
+                                u_flags: u32,
+                            ) -> i32;
+                        }
+
+                        // SWP_NOZORDER (0x0004) | SWP_NOACTIVATE (0x0010) | SWP_NOOWNERZORDER (0x0200)
+                        unsafe {
+                            SetWindowPos(
+                                hwnd.0 as *mut std::ffi::c_void,
+                                std::ptr::null_mut(),
+                                phys_x,
+                                phys_y,
+                                phys_w,
+                                phys_h,
+                                0x0004 | 0x0010 | 0x0200,
+                            );
+                        }
+                        return Ok(());
                     }
-
-                    // SWP_NOZORDER (0x0004) | SWP_NOACTIVATE (0x0010) | SWP_NOOWNERZORDER (0x0200)
-                    unsafe {
-                        SetWindowPos(
-                            hwnd.0 as *mut std::ffi::c_void,
-                            std::ptr::null_mut(),
-                            phys_x,
-                            phys_y,
-                            phys_w,
-                            phys_h,
-                            0x0004 | 0x0010 | 0x0200,
-                        );
-                    }
-                    return Ok(());
                 }
-            }
 
-            let _ = win.set_position(tauri::Position::Logical(tauri::LogicalPosition {
-                x: new_logical_x,
-                y: new_logical_y,
-            }));
-            win.set_size(tauri::Size::Logical(tauri::LogicalSize { width, height }))
-                .map_err(|e| e.to_string())?;
+                let _ = win.set_position(tauri::Position::Logical(tauri::LogicalPosition {
+                    x: new_logical_x,
+                    y: new_logical_y,
+                }));
+                win.set_size(tauri::Size::Logical(tauri::LogicalSize { width, height }))
+                    .map_err(|e| e.to_string())?;
+            }
         }
+    }
+    #[cfg(not(desktop))]
+    {
+        let _ = app;
+        let _ = width;
+        let _ = height;
     }
     Ok(())
 }
@@ -550,13 +589,20 @@ pub fn cmd_resize_mini_anchored(app: AppHandle, width: f64, height: f64) -> Resu
 /// Emergency recovery: show main window regardless of state
 #[tauri::command]
 pub fn cmd_restore_main(app: AppHandle) -> Result<(), String> {
-    if let Some(mini_win) = app.get_webview_window("mini") {
-        let _ = mini_win.hide();
+    #[cfg(desktop)]
+    {
+        if let Some(mini_win) = app.get_webview_window("mini") {
+            let _ = mini_win.hide();
+        }
+        if let Some(main_win) = app.get_webview_window("main") {
+            let _ = main_win.unminimize();
+            main_win.show().map_err(|e| e.to_string())?;
+            main_win.set_focus().map_err(|e| e.to_string())?;
+        }
     }
-    if let Some(main_win) = app.get_webview_window("main") {
-        let _ = main_win.unminimize();
-        main_win.show().map_err(|e| e.to_string())?;
-        main_win.set_focus().map_err(|e| e.to_string())?;
+    #[cfg(not(desktop))]
+    {
+        let _ = app;
     }
     Ok(())
 }
