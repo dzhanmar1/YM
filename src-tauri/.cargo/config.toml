@@ -1,0 +1,3 @@
+# Defender exclusion is active on D:\projects\YM, full parallel CPU power unlocked
+[build]
+# jobs automatically scales to all CPU cores
