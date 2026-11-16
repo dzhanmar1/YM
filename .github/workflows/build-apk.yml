@@ -23,13 +23,25 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Install Android NDK
+      - name: Setup Android SDK and NDK
         run: |
-          sdkmanager --install "ndk;27.0.12077973"
-          echo "NDK_HOME=$ANDROID_HOME/ndk/27.0.12077973" >> $GITHUB_ENV
+          echo "ANDROID_HOME=/usr/local/lib/android/sdk" >> $GITHUB_ENV
+          echo "ANDROID_SDK_ROOT=/usr/local/lib/android/sdk" >> $GITHUB_ENV
+          
+          # Accept SDK licenses
+          yes | /usr/local/lib/android/sdk/cmdline-tools/latest/bin/sdkmanager --licenses || true
+
+          # Find preinstalled NDK or install 26.3.11579264
+          if [ -d "/usr/local/lib/android/sdk/ndk" ] && [ "$(ls -A /usr/local/lib/android/sdk/ndk 2>/dev/null)" ]; then
+            NDK_PATH=$(find /usr/local/lib/android/sdk/ndk -maxdepth 1 -mindepth 1 | sort -V | tail -n 1)
+          else
+            yes | /usr/local/lib/android/sdk/cmdline-tools/latest/bin/sdkmanager --install "ndk;26.3.11579264"
+            NDK_PATH="/usr/local/lib/android/sdk/ndk/26.3.11579264"
+          fi
+          
+          echo "NDK_HOME=$NDK_PATH" >> $GITHUB_ENV
+          echo "ANDROID_NDK_ROOT=$NDK_PATH" >> $GITHUB_ENV
+          echo "Selected NDK at: $NDK_PATH"
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -45,14 +57,14 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Initialize Tauri Android (if needed)
+      - name: Initialize Tauri Android
         run: |
           if [ ! -d "src-tauri/gen/android" ]; then
-            npx tauri android init
+            npx tauri android init --ci
           fi
 
-      - name: Build Android APK
-        run: npx tauri android build --apk --target aarch64
+      - name: Build Android APK (Debug - ready to install)
+        run: npx tauri android build --debug --apk --target aarch64 --ci
         env:
           NDK_HOME: ${{ env.NDK_HOME }}
 
