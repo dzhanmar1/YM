@@ -25,12 +25,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
+    const rawClientIp = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || (req.headers['x-real-ip'] as string);
+    const clientIp = rawClientIp && !rawClientIp.startsWith('10.') && !rawClientIp.startsWith('192.168.') ? rawClientIp : '5.255.255.5';
+
     // 1. Fetch download-info
     const infoResp = await fetch(`https://api.music.yandex.net/tracks/${trackId}/download-info`, {
       headers: {
         Authorization: `OAuth ${authToken}`,
         'X-Yandex-Music-Client': 'YandexMusicAndroid/24022432',
         'User-Agent': 'Yandex-Music-API',
+        'X-Forwarded-For': `${clientIp}, 5.255.255.5`,
+        'X-Real-IP': clientIp,
       },
     });
 

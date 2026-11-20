@@ -9,8 +9,8 @@
       "destination": "/api/stream"
     },
     {
-      "source": "/api/ym/:match*",
-      "destination": "https://api.music.yandex.net/:match*"
+      "source": "/api/ym/(.*)",
+      "destination": "/api/ym/$1"
     },
     {
       "source": "/(.*)",

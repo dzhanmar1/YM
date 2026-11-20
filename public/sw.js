@@ -34,6 +34,9 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
+  // Ignore non-http requests (chrome-extension://, blob:, etc.)
+  if (!url.protocol.startsWith('http')) return;
+
   // 1. Never cache streaming audio, range requests, or audio API
   if (
     event.request.headers.has('range') ||
