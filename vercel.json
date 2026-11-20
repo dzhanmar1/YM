@@ -10,7 +10,7 @@
     },
     {
       "source": "/api/ym/(.*)",
-      "destination": "/api/ym/$1"
+      "destination": "/api/ym?path=$1"
     },
     {
       "source": "/(.*)",
