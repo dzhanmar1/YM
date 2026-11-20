@@ -11,7 +11,7 @@ interface LyricsState {
 
   toggleKaraoke: () => void;
   setKaraokeOpen: (open: boolean) => void;
-  loadLyrics: (trackId: string) => Promise<void>;
+  loadLyrics: (trackId: string, trackTitle?: string, artistName?: string, durationSeconds?: number) => Promise<void>;
   updateActiveLine: (currentTimeMs: number) => void;
   clearLyrics: () => void;
 }
@@ -26,10 +26,10 @@ export const useLyricsStore = create<LyricsState>((set, get) => ({
   toggleKaraoke: () => set((s) => ({ isKaraokeOpen: !s.isKaraokeOpen })),
   setKaraokeOpen: (open: boolean) => set({ isKaraokeOpen: open }),
 
-  loadLyrics: async (trackId: string) => {
+  loadLyrics: async (trackId: string, trackTitle?: string, artistName?: string, durationSeconds?: number) => {
     set({ isLoading: true, error: null, lyrics: null, activeLineIndex: -1 });
     try {
-      const data = await api.getLyrics(trackId);
+      const data = await api.getLyrics(trackId, trackTitle, artistName, durationSeconds);
       set({ lyrics: data, isLoading: false });
     } catch (e: any) {
       set({ error: 'Текст песни не найден', isLoading: false });

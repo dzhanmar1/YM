@@ -5,7 +5,7 @@ import { usePlayerStore } from '../store/playerStore';
 import { useLyricsStore } from '../store/lyricsStore';
 import { useEqualizerStore, EQ_FREQUENCIES } from '../store/equalizerStore';
 import { useWindowStore } from '../store/windowStore';
-import { formatCoverUrl } from '../types';
+import { formatCoverUrl, type TrackItem } from '../types';
 
 import { audioVisualizer } from '../utils/audioVisualizer';
 
@@ -81,6 +81,43 @@ export function AudioEngine() {
   useEffect(() => {
     loadSettings();
   }, [loadSettings]);
+
+  const currentTrackRef = useRef(currentTrack);
+  useEffect(() => {
+    currentTrackRef.current = currentTrack;
+  }, [currentTrack]);
+
+  const applyMediaSessionMetadata = useCallback((track: TrackItem | null) => {
+    if (!('mediaSession' in navigator)) return;
+    if (!track) {
+      navigator.mediaSession.metadata = null;
+      return;
+    }
+
+    const coverUri = track.cover_uri;
+    const validSizes = ['100x100', '200x200', '300x300', '400x400', '600x600', '800x800', '1000x1000'];
+    const artwork = coverUri
+      ? validSizes.map((size) => ({
+          src: formatCoverUrl(coverUri, size),
+          sizes: size,
+          type: 'image/jpeg',
+        }))
+      : [];
+
+    try {
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: track.title || 'YM',
+        artist: track.artists?.join(', ') || 'Yandex Music',
+        album: track.album_title || '',
+        artwork,
+      });
+    } catch {}
+
+    if (isTauri()) {
+      const tooltipText = `${track.title} — ${track.artists.join(', ')}`;
+      invoke('cmd_update_tray_tooltip', { tooltip: tooltipText }).catch(() => {});
+    }
+  }, []);
 
   // 1. Initialize audio element and Web Audio API graph
   useEffect(() => {
@@ -397,6 +434,10 @@ export function AudioEngine() {
         setPlaying(true);
       }
       fadeIn(0.25);
+      // Re-assert on iOS Safari when audio starts so NowPlaying lock screen receives artwork
+      if (currentTrackRef.current) {
+        applyMediaSessionMetadata(currentTrackRef.current);
+      }
     };
     const handlePause = () => {
       if (!isSwitchingTrackRef.current && !audio.seeking && audio.currentTime < (audio.duration || 1)) {
@@ -472,36 +513,8 @@ export function AudioEngine() {
 
   // 9a. Media Session Metadata — ONLY updates when track changes (eliminates cover flickering/blinking!)
   useEffect(() => {
-    if (!('mediaSession' in navigator)) return;
-    if (!currentTrack) {
-      navigator.mediaSession.metadata = null;
-      return;
-    }
-
-    const coverUri = currentTrack.cover_uri;
-    const artwork = coverUri
-      ? [
-          { src: formatCoverUrl(coverUri, '96x96'), sizes: '96x96', type: 'image/jpeg' },
-          { src: formatCoverUrl(coverUri, '128x128'), sizes: '128x128', type: 'image/jpeg' },
-          { src: formatCoverUrl(coverUri, '192x192'), sizes: '192x192', type: 'image/jpeg' },
-          { src: formatCoverUrl(coverUri, '256x256'), sizes: '256x256', type: 'image/jpeg' },
-          { src: formatCoverUrl(coverUri, '384x384'), sizes: '384x384', type: 'image/jpeg' },
-          { src: formatCoverUrl(coverUri, '512x512'), sizes: '512x512', type: 'image/jpeg' },
-        ]
-      : [];
-
-    navigator.mediaSession.metadata = new MediaMetadata({
-      title: currentTrack.title || 'YM',
-      artist: currentTrack.artists?.join(', ') || 'Yandex Music',
-      album: currentTrack.album_title || '',
-      artwork,
-    });
-
-    if (isTauri()) {
-      const tooltipText = `${currentTrack.title} — ${currentTrack.artists.join(', ')}`;
-      invoke('cmd_update_tray_tooltip', { tooltip: tooltipText }).catch(() => {});
-    }
-  }, [currentTrack?.id]);
+    applyMediaSessionMetadata(currentTrack);
+  }, [currentTrack?.id, applyMediaSessionMetadata]);
 
   // 9b. Media Session Action Handlers
   useEffect(() => {
@@ -536,25 +549,23 @@ export function AudioEngine() {
     navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
   }, [isPlaying]);
 
-  // 9d. Sync MediaSession position state for lockscreen scrubber (throttled to avoid notification re-renders)
-  const lastPositionSyncRef = useRef<number>(0);
+  // 9d. Sync MediaSession position state for lockscreen scrubber (only on track change, duration change, or play/pause)
   useEffect(() => {
     if (!('mediaSession' in navigator) || !('setPositionState' in navigator.mediaSession)) return;
-    const now = performance.now();
-    // Only update position every 2.5 seconds or on play/pause, since Android OS smoothly advances the lockscreen scrubber automatically based on playbackRate: 1.0!
-    if (now - lastPositionSyncRef.current < 2500 && isPlaying) return;
-    lastPositionSyncRef.current = now;
+    const audio = audioRef.current;
+    const cur = audio ? audio.currentTime : currentTime;
+    const dur = audio ? audio.duration : duration;
 
-    if (duration > 0 && isFinite(duration) && isFinite(currentTime)) {
+    if (dur > 0 && isFinite(dur) && isFinite(cur)) {
       try {
         navigator.mediaSession.setPositionState({
-          duration: Math.max(duration, 0),
+          duration: Math.max(dur, 0),
           playbackRate: isPlaying ? 1.0 : 0.0,
-          position: Math.min(Math.max(currentTime, 0), duration),
+          position: Math.min(Math.max(cur, 0), dur),
         });
       } catch {}
     }
-  }, [currentTime, duration, isPlaying]);
+  }, [currentTrack?.id, duration, isPlaying]);
 
   // Ref for throttling rapid next/prev triggers
   const lastSkipActionRef = useRef<number>(0);

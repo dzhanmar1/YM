@@ -144,9 +144,13 @@ function parseLrc(lrcContent: string): SyncedLyrics {
   }
   lines.sort((a, b) => a.time_ms - b.time_ms);
   const is_synced = lines.length > 0;
+  const finalLines: LyricLine[] = is_synced
+    ? lines
+    : rawLines.map((text, idx) => ({ time_ms: idx * 1000, text }));
+
   return {
     is_synced,
-    lines,
+    lines: finalLines,
     raw_text: is_synced ? lines.map((l) => l.text).join('\n') : rawLines.join('\n'),
   };
 }
@@ -243,63 +247,66 @@ export async function clearCache(): Promise<void> {
   }
 }
 
-export async function getLyrics(trackId: string): Promise<SyncedLyrics> {
-  // 1. Try to fetch track details to query LRCLIB for synced karaoke lyrics
-  try {
-    const trackData = await ymFetch(`/tracks/${trackId}`);
-    const trackObj = Array.isArray(trackData.result) ? trackData.result[0] : trackData.result;
-    if (trackObj) {
-      const title = trackObj.title;
-      const artist = trackObj.artists?.[0]?.name;
-      const durationSec = Math.round((trackObj.durationMs || 0) / 1000);
+export async function getLyrics(
+  trackId: string,
+  trackTitle?: string,
+  artistName?: string,
+  durationSeconds?: number
+): Promise<SyncedLyrics> {
+  let title = trackTitle;
+  let artist = artistName;
+  let durationSec = durationSeconds;
 
-      if (title && artist) {
-        // Exact query
-        let lrcUrl = `https://lrclib.net/api/get?track_name=${encodeURIComponent(title)}&artist_name=${encodeURIComponent(artist)}`;
-        if (durationSec > 0) lrcUrl += `&duration=${durationSec}`;
-
-        try {
-          const res = await fetch(lrcUrl);
-          if (res.ok) {
-            const data = await res.json();
-            if (data.syncedLyrics && data.syncedLyrics.trim()) {
-              return parseLrc(data.syncedLyrics);
-            }
-            if (data.plainLyrics && data.plainLyrics.trim()) {
-              return {
-                is_synced: false,
-                lines: [],
-                raw_text: data.plainLyrics,
-              };
-            }
-          }
-        } catch {}
-
-        // Fuzzy search fallback
-        try {
-          const searchUrl = `https://lrclib.net/api/search?track_name=${encodeURIComponent(title)}&artist_name=${encodeURIComponent(artist)}`;
-          const searchRes = await fetch(searchUrl);
-          if (searchRes.ok) {
-            const list = await searchRes.json();
-            if (Array.isArray(list) && list.length > 0) {
-              const withSync = list.find((item: any) => item.syncedLyrics && item.syncedLyrics.trim());
-              if (withSync) {
-                return parseLrc(withSync.syncedLyrics);
-              }
-              const withPlain = list.find((item: any) => item.plainLyrics && item.plainLyrics.trim());
-              if (withPlain) {
-                return {
-                  is_synced: false,
-                  lines: [],
-                  raw_text: withPlain.plainLyrics,
-                };
-              }
-            }
-          }
-        } catch {}
+  if (!title || !artist) {
+    try {
+      const trackData = await ymFetch(`/tracks/${trackId}`);
+      const trackObj = Array.isArray(trackData.result) ? trackData.result[0] : trackData.result;
+      if (trackObj) {
+        title = trackObj.title;
+        artist = trackObj.artists?.[0]?.name;
+        durationSec = Math.round((trackObj.durationMs || 0) / 1000);
       }
-    }
-  } catch {}
+    } catch {}
+  }
+
+  // 1. Try to fetch track details to query LRCLIB for synced karaoke lyrics
+  if (title && artist) {
+    // Exact query
+    let lrcUrl = `https://lrclib.net/api/get?track_name=${encodeURIComponent(title)}&artist_name=${encodeURIComponent(artist)}`;
+    if (durationSec && durationSec > 0) lrcUrl += `&duration=${durationSec}`;
+
+    try {
+      const res = await fetch(lrcUrl);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.syncedLyrics && data.syncedLyrics.trim()) {
+          return parseLrc(data.syncedLyrics);
+        }
+        if (data.plainLyrics && data.plainLyrics.trim()) {
+          return parseLrc(data.plainLyrics);
+        }
+      }
+    } catch {}
+
+    // Fuzzy search fallback
+    try {
+      const searchUrl = `https://lrclib.net/api/search?track_name=${encodeURIComponent(title)}&artist_name=${encodeURIComponent(artist)}`;
+      const searchRes = await fetch(searchUrl);
+      if (searchRes.ok) {
+        const list = await searchRes.json();
+        if (Array.isArray(list) && list.length > 0) {
+          const withSync = list.find((item: any) => item.syncedLyrics && item.syncedLyrics.trim());
+          if (withSync) {
+            return parseLrc(withSync.syncedLyrics);
+          }
+          const withPlain = list.find((item: any) => item.plainLyrics && item.plainLyrics.trim());
+          if (withPlain) {
+            return parseLrc(withPlain.plainLyrics);
+          }
+        }
+      }
+    } catch {}
+  }
 
   // 2. Fallback: Yandex /supplement endpoint for official lyrics
   try {

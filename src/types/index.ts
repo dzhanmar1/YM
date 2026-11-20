@@ -103,8 +103,8 @@ export type RepeatMode = 'off' | 'all' | 'one';
 
 export function formatCoverUrl(uri?: string, size = '200x200'): string {
   if (!uri) return '';
-  if (uri.startsWith('http')) return uri;
-  return `https://${uri.replace('%%', size)}`;
+  const url = uri.startsWith('http') ? uri : `https://${uri}`;
+  return url.replace('%%', size);
 }
 
 export type AudioQuality = 'hq_320' | 'medium_192' | 'low_128' | 'lossless';

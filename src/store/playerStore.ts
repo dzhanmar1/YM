@@ -142,7 +142,9 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     }
 
     // Automatically load synchronized lyrics for the track
-    useLyricsStore.getState().loadLyrics(track.id);
+    useLyricsStore
+      .getState()
+      .loadLyrics(track.id, track.title, track.artists?.[0], Math.round(track.duration_ms / 1000));
 
     // If in Wave mode, report trackStarted to advance Yandex Rotor recommendation state
     const { waveMode: isWave, waveStationId: wStationId, waveBatchId: wBatchId } = get();

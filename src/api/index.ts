@@ -52,8 +52,13 @@ export async function clearCache(): Promise<void> {
 }
 
 // Lyrics
-export async function getLyrics(trackId: string): Promise<SyncedLyrics> {
-  if (!isTauri()) return web.getLyrics(trackId);
+export async function getLyrics(
+  trackId: string,
+  trackTitle?: string,
+  artistName?: string,
+  durationSeconds?: number
+): Promise<SyncedLyrics> {
+  if (!isTauri()) return web.getLyrics(trackId, trackTitle, artistName, durationSeconds);
   return invoke('cmd_get_lyrics', { trackId });
 }
 
