@@ -19,12 +19,27 @@ import { md5 } from '../utils/md5';
 const SECRET = 'XGRlBW9FXlekgbPrRHuSiA';
 const BASE_PROXY_URL = '/api/ym';
 
+export function sanitizeToken(raw: string): string {
+  let cleaned = raw.trim();
+  if (cleaned.startsWith('OAuth ')) {
+    cleaned = cleaned.slice(6).trim();
+  }
+  if (cleaned.includes('access_token=')) {
+    const match = cleaned.match(/access_token=([^&#\s]+)/);
+    if (match && match[1]) {
+      return match[1].trim();
+    }
+  }
+  return cleaned;
+}
+
 function getToken(): string | null {
-  return localStorage.getItem('ym_token');
+  const t = localStorage.getItem('ym_token');
+  return t ? sanitizeToken(t) : null;
 }
 
 function setToken(token: string): void {
-  localStorage.setItem('ym_token', token);
+  localStorage.setItem('ym_token', sanitizeToken(token));
 }
 
 function removeToken(): void {
@@ -44,7 +59,7 @@ async function ymFetch<T = any>(endpoint: string, options: RequestInit = {}): Pr
   if (token) {
     headers.set('Authorization', `OAuth ${token}`);
   }
-  headers.set('X-Yandex-Music-Client', 'YandexMusicAndroid/24022432');
+  headers.set('X-Yandex-Music-Client', 'YandexMusicAndroid/24023621');
 
   const url = `${BASE_PROXY_URL}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
   const response = await fetch(url, {
