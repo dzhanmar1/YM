@@ -84,12 +84,27 @@ export function AudioEngine() {
 
   // 1. Initialize audio element and Web Audio API graph
   useEffect(() => {
-    const audio = new Audio();
+    let audio = audioRef.current;
+    if (!audio) {
+      audio = new Audio();
+      audioRef.current = audio;
+    }
     audio.preload = 'auto';
     audio.crossOrigin = 'anonymous';
-    audioRef.current = audio;
+    audio.setAttribute('playsinline', 'true');
+    audio.setAttribute('webkit-playsinline', 'true');
+
+    // On mobile devices (Android / iOS), routing HTMLAudioElement into AudioContext
+    // via createMediaElementSource causes Chrome/Android OS to suspend playback
+    // the moment the screen turns off. Native <audio> outputs directly to the system
+    // hardware audio stack and plays smoothly with screen locked.
+    const isMobileDevice =
+      typeof navigator !== 'undefined' &&
+      (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+        window.innerWidth <= 768);
 
     const initAudioGraph = () => {
+      if (isMobileDevice) return;
       if (isGraphInitialized.current) return;
       try {
         const AudioContextClass =
@@ -455,17 +470,27 @@ export function AudioEngine() {
     };
   }, [fadeIn]);
 
-  // 9. Media Session API (OS Native Media Keys)
+  // 9. Media Session API (OS Native Media Keys & Background Playback on Android)
   useEffect(() => {
     if (!('mediaSession' in navigator)) return;
 
+    const coverUri = currentTrack?.cover_uri;
+    const artwork = coverUri
+      ? [
+          { src: formatCoverUrl(coverUri, '96x96'), sizes: '96x96', type: 'image/jpeg' },
+          { src: formatCoverUrl(coverUri, '128x128'), sizes: '128x128', type: 'image/jpeg' },
+          { src: formatCoverUrl(coverUri, '192x192'), sizes: '192x192', type: 'image/jpeg' },
+          { src: formatCoverUrl(coverUri, '256x256'), sizes: '256x256', type: 'image/jpeg' },
+          { src: formatCoverUrl(coverUri, '384x384'), sizes: '384x384', type: 'image/jpeg' },
+          { src: formatCoverUrl(coverUri, '512x512'), sizes: '512x512', type: 'image/jpeg' },
+        ]
+      : [];
+
     navigator.mediaSession.metadata = new MediaMetadata({
-      title: currentTrack?.title || 'YM Desktop',
-      artist: currentTrack?.artists.join(', ') || 'Yandex Music',
+      title: currentTrack?.title || 'YM',
+      artist: currentTrack?.artists?.join(', ') || 'Yandex Music',
       album: currentTrack?.album_title || '',
-      artwork: currentTrack?.cover_uri
-        ? [{ src: formatCoverUrl(currentTrack.cover_uri, '400x400'), sizes: '400x400', type: 'image/jpeg' }]
-        : [],
+      artwork,
     });
 
     navigator.mediaSession.setActionHandler('play', () => setPlaying(true));
@@ -498,6 +523,26 @@ export function AudioEngine() {
       invoke('cmd_update_tray_tooltip', { tooltip: tooltipText }).catch(() => {});
     }
   }, [currentTrack, playNext, playPrev, setPlaying, seek, currentTime, duration]);
+
+  // Sync MediaSession playbackState with player state (vital for Android OS background audio service)
+  useEffect(() => {
+    if (!('mediaSession' in navigator)) return;
+    navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
+  }, [isPlaying]);
+
+  // Sync MediaSession position state for lockscreen scrubber
+  useEffect(() => {
+    if (!('mediaSession' in navigator) || !('setPositionState' in navigator.mediaSession)) return;
+    if (duration > 0 && isFinite(duration) && isFinite(currentTime)) {
+      try {
+        navigator.mediaSession.setPositionState({
+          duration: Math.max(duration, 0),
+          playbackRate: 1.0,
+          position: Math.min(Math.max(currentTime, 0), duration),
+        });
+      } catch {}
+    }
+  }, [currentTime, duration]);
 
   // Ref for throttling rapid next/prev triggers
   const lastSkipActionRef = useRef<number>(0);
@@ -682,5 +727,13 @@ export function AudioEngine() {
     return () => { if (unlisten) unlisten(); };
   }, []);
 
-  return null;
+  return (
+    <audio
+      ref={audioRef}
+      preload="auto"
+      crossOrigin="anonymous"
+      playsInline
+      style={{ display: 'none' }}
+    />
+  );
 }
