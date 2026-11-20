@@ -18,10 +18,13 @@ import { useWindowStore } from '../store/windowStore';
 import { useEqualizerStore } from '../store/equalizerStore';
 import { usePlayerStore } from '../store/playerStore';
 import { useIsMobile } from '../hooks/useIsMobile';
+import { usePwaInstall } from '../hooks/usePwaInstall';
+import { Download } from 'lucide-react';
 import type { CacheStats, AudioQuality } from '../types';
 
 export function SettingsPage() {
   const isMobile = useIsMobile();
+  const { isInstallable, isInstalled, promptInstall } = usePwaInstall();
   const { status, logout } = useAuthStore();
   const {
     audioQuality,
@@ -593,6 +596,59 @@ export function SettingsPage() {
           </button>
         </div>
       </div>
+
+      {/* PWA Installation Card (Web mode) */}
+      {(isInstallable || isInstalled) && (
+        <div style={{
+          backgroundColor: 'var(--bg-card)',
+          border: '1px solid rgba(255, 255, 255, 0.12)',
+          borderRadius: 'var(--radius-md)',
+          padding: '20px 24px',
+          marginBottom: 20,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 16,
+        }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+              <Download size={16} color="#ffffff" />
+              <h2 style={{ fontSize: 13, fontWeight: 700, color: '#ffffff', textTransform: 'uppercase', letterSpacing: 0.8 }}>
+                {isInstalled ? 'Приложение установлено' : 'Установить приложение (PWA)'}
+              </h2>
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+              {isInstalled
+                ? 'Вы используете автономную PWA версию YM на главном экране.'
+                : 'Установите YM на главный экран или рабочий стол для быстрого запуска, фонового воспроизведения и управления с экрана блокировки.'}
+            </div>
+          </div>
+
+          {isInstallable && (
+            <button
+              onClick={() => promptInstall()}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                padding: '10px 20px',
+                borderRadius: 'var(--radius-md)',
+                backgroundColor: '#ffffff',
+                border: 'none',
+                color: '#050505',
+                fontSize: 13,
+                fontWeight: 700,
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              <Download size={14} />
+              <span>Установить</span>
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Technology & Version Stack */}
       <div style={{

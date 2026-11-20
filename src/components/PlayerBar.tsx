@@ -1,5 +1,4 @@
 import React, { useState, useRef, useCallback } from 'react';
-import { invoke } from '@tauri-apps/api/core';
 import {
   Play,
   Pause,

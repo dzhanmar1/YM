@@ -92,6 +92,13 @@ export interface CacheStats {
   formatted_size: string;
 }
 
+export interface CustomWaveOptions {
+  activity?: string;
+  mood?: string;
+  character?: string;
+  language?: string;
+}
+
 export type RepeatMode = 'off' | 'all' | 'one';
 
 export function formatCoverUrl(uri?: string, size = '200x200'): string {

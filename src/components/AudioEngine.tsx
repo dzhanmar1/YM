@@ -1,5 +1,5 @@
 import { useEffect, useRef, useCallback } from 'react';
-import { invoke } from '@tauri-apps/api/core';
+import { invoke, isTauri } from '@tauri-apps/api/core';
 import { listen, emit } from '@tauri-apps/api/event';
 import { usePlayerStore } from '../store/playerStore';
 import { useLyricsStore } from '../store/lyricsStore';
@@ -473,18 +473,38 @@ export function AudioEngine() {
     navigator.mediaSession.setActionHandler('nexttrack', () => playNext());
     navigator.mediaSession.setActionHandler('previoustrack', () => playPrev());
 
-    // Update system tray tooltip with current playing track info
-    const tooltipText = currentTrack
-      ? `${currentTrack.title} — ${currentTrack.artists.join(', ')}`
-      : 'YM Desktop';
-    invoke('cmd_update_tray_tooltip', { tooltip: tooltipText }).catch(() => {});
-  }, [currentTrack, playNext, playPrev, setPlaying]);
+    // Enhance media session with seeking actions
+    try {
+      navigator.mediaSession.setActionHandler('seekto', (details) => {
+        if (details.seekTime !== undefined && details.seekTime !== null) {
+          seek(details.seekTime);
+        }
+      });
+      navigator.mediaSession.setActionHandler('seekforward', (details) => {
+        const offset = details.seekOffset || 10;
+        seek(Math.min(duration || 0, currentTime + offset));
+      });
+      navigator.mediaSession.setActionHandler('seekbackward', (details) => {
+        const offset = details.seekOffset || 10;
+        seek(Math.max(0, currentTime - offset));
+      });
+    } catch {}
+
+    // Update system tray tooltip with current playing track info (desktop only)
+    if (isTauri()) {
+      const tooltipText = currentTrack
+        ? `${currentTrack.title} — ${currentTrack.artists.join(', ')}`
+        : 'YM Desktop';
+      invoke('cmd_update_tray_tooltip', { tooltip: tooltipText }).catch(() => {});
+    }
+  }, [currentTrack, playNext, playPrev, setPlaying, seek, currentTime, duration]);
 
   // Ref for throttling rapid next/prev triggers
   const lastSkipActionRef = useRef<number>(0);
 
-  // 10. Sync player state to mini window whenever metadata, controls, or wave mode change
+  // 10. Sync player state to mini window whenever metadata, controls, or wave mode change (Tauri desktop only)
   const emitFullState = useCallback(() => {
+    if (!isTauri()) return;
     const isLiked = currentTrack ? likedIds.has(currentTrack.id) : false;
     const curTime = audioRef.current ? audioRef.current.currentTime : 0;
     const stateJson = JSON.stringify({
@@ -518,6 +538,7 @@ export function AudioEngine() {
 
   // 10b. Stream lightweight audio energy to mini player window for reactive background visualizer
   useEffect(() => {
+    if (!isTauri()) return;
     if (!isPlaying) {
       // Send zero-energy state so mini visualizer gracefully settles
       emit('audio-energy', {
@@ -548,8 +569,9 @@ export function AudioEngine() {
     return () => clearInterval(interval);
   }, [isPlaying]);
 
-  // 11. Listen for actions from mini window (mounted once)
+  // 11. Listen for actions from mini window (mounted once, desktop only)
   useEffect(() => {
+    if (!isTauri()) return;
     let unlisten: (() => void) | null = null;
 
     listen<{ action: string; payload: string | null }>('mini-action', (event) => {

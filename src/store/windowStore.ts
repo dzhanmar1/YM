@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { isTauri } from '@tauri-apps/api/core';
 import { getCurrentWindow, LogicalSize } from '@tauri-apps/api/window';
 import { ViewMode, SceneMode, AudioQuality } from '../types';
 import { setAudioQuality as apiSetQuality, getAudioQuality as apiGetQuality } from '../api';
@@ -67,6 +68,8 @@ export const useWindowStore = create<WindowState>((set, get) => ({
   setViewMode: async (mode: ViewMode) => {
     set({ viewMode: mode, isIdle: false });
 
+    if (!isTauri()) return;
+
     try {
       const appWin = getCurrentWindow();
       if (mode === 'full') {
@@ -93,6 +96,10 @@ export const useWindowStore = create<WindowState>((set, get) => ({
   },
 
   setAlwaysOnTop: async (always: boolean) => {
+    if (!isTauri()) {
+      set({ alwaysOnTop: always });
+      return;
+    }
     try {
       const appWin = getCurrentWindow();
       await appWin.setAlwaysOnTop(always);
@@ -108,7 +115,7 @@ export const useWindowStore = create<WindowState>((set, get) => ({
     const next = !get().miniKaraoke;
     set({ miniKaraoke: next });
 
-    if (get().viewMode === 'mini') {
+    if (get().viewMode === 'mini' && isTauri()) {
       try {
         const appWin = getCurrentWindow();
         await appWin.setSize(new LogicalSize(380, next ? 300 : 150));

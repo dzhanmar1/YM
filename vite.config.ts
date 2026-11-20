@@ -20,6 +20,17 @@ export default defineConfig({
     port: 1421,
     strictPort: true,
     host: host || false,
+    proxy: {
+      '/api/ym': {
+        target: 'https://api.music.yandex.net',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/ym/, ''),
+        headers: {
+          'User-Agent': 'Yandex-Music-API',
+          'X-Yandex-Music-Client': 'YandexMusicAndroid/24022432',
+        },
+      },
+    },
     hmr: host
       ? {
           protocol: 'ws',

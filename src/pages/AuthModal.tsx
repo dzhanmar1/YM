@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { ExternalLink, Key, Cookie, Loader2, Clipboard, CheckCircle2, Sparkles, Smartphone } from 'lucide-react';
+import { isTauri } from '@tauri-apps/api/core';
 import { openUrl } from '@tauri-apps/plugin-opener';
 import { useAuthStore } from '../store/authStore';
 import { useIsMobile } from '../hooks/useIsMobile';
@@ -23,14 +24,33 @@ export function AuthModal() {
   const [autoLogged, setAutoLogged] = useState(false);
   const { loginWithToken, loginWithCookies, isLoading, error } = useAuthStore();
 
+  // Check URL hash for OAuth redirect token (PWA / Web mode)
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.location.hash) {
+      const hash = window.location.hash;
+      if (hash.includes('access_token=')) {
+        const token = extractOAuthToken(hash);
+        if (token.length > 20) {
+          setValue(token);
+          loginWithToken(token);
+          try {
+            window.history.replaceState(null, '', window.location.pathname);
+          } catch {}
+        }
+      }
+    }
+  }, [loginWithToken]);
+
   const handleOpenOAuthUrl = async () => {
     const oauthUrl =
       'https://oauth.yandex.ru/authorize?response_type=token&client_id=23cabbbdc6cd418abb4b39c32c41195d';
-    try {
-      await openUrl(oauthUrl);
-    } catch {
-      window.open(oauthUrl, '_blank');
+    if (isTauri()) {
+      try {
+        await openUrl(oauthUrl);
+        return;
+      } catch {}
     }
+    window.open(oauthUrl, '_blank');
   };
 
   // Inspect clipboard for token helper

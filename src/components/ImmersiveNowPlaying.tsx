@@ -23,7 +23,7 @@ import { useEqualizerStore } from '../store/equalizerStore';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { AmbientBackgroundVisualizer } from './AmbientBackgroundVisualizer';
 import { formatCoverUrl, formatDuration } from '../types';
-import { invoke } from '@tauri-apps/api/core';
+import { invoke, isTauri } from '@tauri-apps/api/core';
 
 export function ImmersiveNowPlaying() {
   const isMobile = useIsMobile();
@@ -300,7 +300,7 @@ export function ImmersiveNowPlaying() {
             <Sliders size={15} />
           </button>
 
-          {!isMobile && (
+          {!isMobile && isTauri() && (
             <button
               onClick={async () => {
                 setNowPlayingOpen(false);

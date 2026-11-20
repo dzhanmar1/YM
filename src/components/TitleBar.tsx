@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { isTauri, invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import {
   Search,
@@ -15,7 +16,6 @@ import {
 import { usePlayerStore } from '../store/playerStore';
 import { useEqualizerStore } from '../store/equalizerStore';
 import { useWindowStore } from '../store/windowStore';
-import { invoke } from '@tauri-apps/api/core';
 
 export type AppTab = 'landing' | 'collection' | 'search';
 
@@ -38,6 +38,7 @@ export function TitleBar({
   const { setWaveSettingsOpen, setSettingsOpen } = useWindowStore();
 
   useEffect(() => {
+    if (!isTauri()) return;
     let unlisten: (() => void) | null = null;
     try {
       const win = getCurrentWindow();
@@ -101,8 +102,9 @@ export function TitleBar({
   return (
     <header
       data-tauri-drag-region
-      onDoubleClick={handleToggleMaximize}
+      onDoubleClick={isTauri() ? handleToggleMaximize : undefined}
       onMouseDown={(e) => {
+        if (!isTauri()) return;
         if (e.button === 0 && e.detail === 1) {
           const target = e.target as HTMLElement;
           if (!target.closest('button, input, [role="button"], a')) {
@@ -390,77 +392,79 @@ export function TitleBar({
           </button>
         </div>
 
-        {/* Custom Window Buttons (Minimize, Maximize/Restore, Close) */}
-        <div style={{ display: 'flex', alignItems: 'center', height: '100%', borderLeft: '1px solid rgba(255, 255, 255, 0.06)' }}>
-          <button
-            onClick={handleMinimize}
-            style={{
-              width: 44,
-              height: '100%',
-              backgroundColor: 'transparent',
-              border: 'none',
-              color: '#888888',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-              transition: 'background-color 0.1s ease',
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.08)')}
-            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
-            title="Свернуть"
-          >
-            <Minus size={14} />
-          </button>
+        {/* Custom Window Buttons (Minimize, Maximize/Restore, Close - Desktop Tauri only) */}
+        {isTauri() && (
+          <div style={{ display: 'flex', alignItems: 'center', height: '100%', borderLeft: '1px solid rgba(255, 255, 255, 0.06)' }}>
+            <button
+              onClick={handleMinimize}
+              style={{
+                width: 44,
+                height: '100%',
+                backgroundColor: 'transparent',
+                border: 'none',
+                color: '#888888',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                transition: 'background-color 0.1s ease',
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.08)')}
+              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+              title="Свернуть"
+            >
+              <Minus size={14} />
+            </button>
 
-          <button
-            onClick={handleToggleMaximize}
-            style={{
-              width: 44,
-              height: '100%',
-              backgroundColor: 'transparent',
-              border: 'none',
-              color: '#888888',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-              transition: 'background-color 0.1s ease',
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.08)')}
-            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
-            title={isMaximized ? 'Восстановить' : 'Развернуть'}
-          >
-            {isMaximized ? <Copy size={12} /> : <Square size={12} />}
-          </button>
+            <button
+              onClick={handleToggleMaximize}
+              style={{
+                width: 44,
+                height: '100%',
+                backgroundColor: 'transparent',
+                border: 'none',
+                color: '#888888',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                transition: 'background-color 0.1s ease',
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.08)')}
+              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+              title={isMaximized ? 'Восстановить' : 'Развернуть'}
+            >
+              {isMaximized ? <Copy size={12} /> : <Square size={12} />}
+            </button>
 
-          <button
-            onClick={handleClose}
-            style={{
-              width: 46,
-              height: '100%',
-              backgroundColor: 'transparent',
-              border: 'none',
-              color: '#888888',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-              transition: 'all 0.1s ease',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = '#e81123';
-              e.currentTarget.style.color = '#ffffff';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = 'transparent';
-              e.currentTarget.style.color = '#888888';
-            }}
-            title="Закрыть"
-          >
-            <X size={15} />
-          </button>
-        </div>
+            <button
+              onClick={handleClose}
+              style={{
+                width: 46,
+                height: '100%',
+                backgroundColor: 'transparent',
+                border: 'none',
+                color: '#888888',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                transition: 'all 0.1s ease',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = '#e81123';
+                e.currentTarget.style.color = '#ffffff';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'transparent';
+                e.currentTarget.style.color = '#888888';
+              }}
+              title="Закрыть"
+            >
+              <X size={15} />
+            </button>
+          </div>
+        )}
       </div>
     </header>
   );
