@@ -244,24 +244,82 @@ export async function clearCache(): Promise<void> {
 }
 
 export async function getLyrics(trackId: string): Promise<SyncedLyrics> {
+  // 1. Try to fetch track details to query LRCLIB for synced karaoke lyrics
   try {
-    const data = await ymFetch(`/tracks/${trackId}/lyrics`);
-    const result = data.result;
-    if (result?.hasAvailableSyncLyrics && result?.downloadUrl) {
-      const resp = await fetch(result.downloadUrl);
-      if (resp.ok) {
-        const text = await resp.text();
-        return parseLrc(text);
+    const trackData = await ymFetch(`/tracks/${trackId}`);
+    const trackObj = Array.isArray(trackData.result) ? trackData.result[0] : trackData.result;
+    if (trackObj) {
+      const title = trackObj.title;
+      const artist = trackObj.artists?.[0]?.name;
+      const durationSec = Math.round((trackObj.durationMs || 0) / 1000);
+
+      if (title && artist) {
+        // Exact query
+        let lrcUrl = `https://lrclib.net/api/get?track_name=${encodeURIComponent(title)}&artist_name=${encodeURIComponent(artist)}`;
+        if (durationSec > 0) lrcUrl += `&duration=${durationSec}`;
+
+        try {
+          const res = await fetch(lrcUrl);
+          if (res.ok) {
+            const data = await res.json();
+            if (data.syncedLyrics && data.syncedLyrics.trim()) {
+              return parseLrc(data.syncedLyrics);
+            }
+            if (data.plainLyrics && data.plainLyrics.trim()) {
+              return {
+                is_synced: false,
+                lines: [],
+                raw_text: data.plainLyrics,
+              };
+            }
+          }
+        } catch {}
+
+        // Fuzzy search fallback
+        try {
+          const searchUrl = `https://lrclib.net/api/search?track_name=${encodeURIComponent(title)}&artist_name=${encodeURIComponent(artist)}`;
+          const searchRes = await fetch(searchUrl);
+          if (searchRes.ok) {
+            const list = await searchRes.json();
+            if (Array.isArray(list) && list.length > 0) {
+              const withSync = list.find((item: any) => item.syncedLyrics && item.syncedLyrics.trim());
+              if (withSync) {
+                return parseLrc(withSync.syncedLyrics);
+              }
+              const withPlain = list.find((item: any) => item.plainLyrics && item.plainLyrics.trim());
+              if (withPlain) {
+                return {
+                  is_synced: false,
+                  lines: [],
+                  raw_text: withPlain.plainLyrics,
+                };
+              }
+            }
+          }
+        } catch {}
       }
     }
-    if (result?.fullLyrics) {
-      return {
-        is_synced: false,
-        lines: [],
-        raw_text: result.fullLyrics,
-      };
+  } catch {}
+
+  // 2. Fallback: Yandex /supplement endpoint for official lyrics
+  try {
+    const supp = await ymFetch(`/tracks/${trackId}/supplement`);
+    const lyricsVal = supp.result?.lyrics;
+    if (lyricsVal) {
+      if (lyricsVal.hasAvailableSyncLyrics && lyricsVal.downloadUrl) {
+        const resp = await fetch(lyricsVal.downloadUrl);
+        if (resp.ok) {
+          const text = await resp.text();
+          return parseLrc(text);
+        }
+      }
+      const full = lyricsVal.fullLyrics || lyricsVal.lyrics || '';
+      if (full.trim()) {
+        return parseLrc(full);
+      }
     }
   } catch {}
+
   return {
     is_synced: false,
     lines: [],

@@ -470,11 +470,15 @@ export function AudioEngine() {
     };
   }, [fadeIn]);
 
-  // 9. Media Session API (OS Native Media Keys & Background Playback on Android)
+  // 9a. Media Session Metadata — ONLY updates when track changes (eliminates cover flickering/blinking!)
   useEffect(() => {
     if (!('mediaSession' in navigator)) return;
+    if (!currentTrack) {
+      navigator.mediaSession.metadata = null;
+      return;
+    }
 
-    const coverUri = currentTrack?.cover_uri;
+    const coverUri = currentTrack.cover_uri;
     const artwork = coverUri
       ? [
           { src: formatCoverUrl(coverUri, '96x96'), sizes: '96x96', type: 'image/jpeg' },
@@ -487,18 +491,27 @@ export function AudioEngine() {
       : [];
 
     navigator.mediaSession.metadata = new MediaMetadata({
-      title: currentTrack?.title || 'YM',
-      artist: currentTrack?.artists?.join(', ') || 'Yandex Music',
-      album: currentTrack?.album_title || '',
+      title: currentTrack.title || 'YM',
+      artist: currentTrack.artists?.join(', ') || 'Yandex Music',
+      album: currentTrack.album_title || '',
       artwork,
     });
+
+    if (isTauri()) {
+      const tooltipText = `${currentTrack.title} — ${currentTrack.artists.join(', ')}`;
+      invoke('cmd_update_tray_tooltip', { tooltip: tooltipText }).catch(() => {});
+    }
+  }, [currentTrack?.id]);
+
+  // 9b. Media Session Action Handlers
+  useEffect(() => {
+    if (!('mediaSession' in navigator)) return;
 
     navigator.mediaSession.setActionHandler('play', () => setPlaying(true));
     navigator.mediaSession.setActionHandler('pause', () => setPlaying(false));
     navigator.mediaSession.setActionHandler('nexttrack', () => playNext());
     navigator.mediaSession.setActionHandler('previoustrack', () => playPrev());
 
-    // Enhance media session with seeking actions
     try {
       navigator.mediaSession.setActionHandler('seekto', (details) => {
         if (details.seekTime !== undefined && details.seekTime !== null) {
@@ -506,43 +519,42 @@ export function AudioEngine() {
         }
       });
       navigator.mediaSession.setActionHandler('seekforward', (details) => {
-        const offset = details.seekOffset || 10;
-        seek(Math.min(duration || 0, currentTime + offset));
+        const cur = audioRef.current?.currentTime || 0;
+        const dur = audioRef.current?.duration || 0;
+        seek(Math.min(dur, cur + (details.seekOffset || 10)));
       });
       navigator.mediaSession.setActionHandler('seekbackward', (details) => {
-        const offset = details.seekOffset || 10;
-        seek(Math.max(0, currentTime - offset));
+        const cur = audioRef.current?.currentTime || 0;
+        seek(Math.max(0, cur - (details.seekOffset || 10)));
       });
     } catch {}
+  }, [playNext, playPrev, setPlaying, seek]);
 
-    // Update system tray tooltip with current playing track info (desktop only)
-    if (isTauri()) {
-      const tooltipText = currentTrack
-        ? `${currentTrack.title} — ${currentTrack.artists.join(', ')}`
-        : 'YM Desktop';
-      invoke('cmd_update_tray_tooltip', { tooltip: tooltipText }).catch(() => {});
-    }
-  }, [currentTrack, playNext, playPrev, setPlaying, seek, currentTime, duration]);
-
-  // Sync MediaSession playbackState with player state (vital for Android OS background audio service)
+  // 9c. Sync MediaSession playbackState with player state (vital for Android OS background audio service)
   useEffect(() => {
     if (!('mediaSession' in navigator)) return;
     navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
   }, [isPlaying]);
 
-  // Sync MediaSession position state for lockscreen scrubber
+  // 9d. Sync MediaSession position state for lockscreen scrubber (throttled to avoid notification re-renders)
+  const lastPositionSyncRef = useRef<number>(0);
   useEffect(() => {
     if (!('mediaSession' in navigator) || !('setPositionState' in navigator.mediaSession)) return;
+    const now = performance.now();
+    // Only update position every 2.5 seconds or on play/pause, since Android OS smoothly advances the lockscreen scrubber automatically based on playbackRate: 1.0!
+    if (now - lastPositionSyncRef.current < 2500 && isPlaying) return;
+    lastPositionSyncRef.current = now;
+
     if (duration > 0 && isFinite(duration) && isFinite(currentTime)) {
       try {
         navigator.mediaSession.setPositionState({
           duration: Math.max(duration, 0),
-          playbackRate: 1.0,
+          playbackRate: isPlaying ? 1.0 : 0.0,
           position: Math.min(Math.max(currentTime, 0), duration),
         });
       } catch {}
     }
-  }, [currentTime, duration]);
+  }, [currentTime, duration, isPlaying]);
 
   // Ref for throttling rapid next/prev triggers
   const lastSkipActionRef = useRef<number>(0);
