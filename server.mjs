@@ -72,6 +72,40 @@ function getJsonIPv4(url, extraHeaders = {}) {
   });
 }
 
+// Follow storage redirects and stream audio directly
+function streamWithRedirect(url, headers = {}, maxRedirects = 5) {
+  return new Promise((resolve, reject) => {
+    const parsed = new URL(url);
+    const req = https.get(
+      parsed,
+      {
+        family: 4,
+        headers: {
+          'User-Agent': CLIENT_VERSION,
+          'X-Yandex-Music-Client': CLIENT_VERSION,
+          ...headers,
+        },
+        timeout: 25000,
+      },
+      (res) => {
+        if ([301, 302, 307, 308].includes(res.statusCode) && res.headers.location) {
+          if (maxRedirects <= 0) return reject(new Error('Too many audio redirects'));
+          const nextUrl = res.headers.location.startsWith('http')
+            ? res.headers.location
+            : new URL(res.headers.location, url).href;
+          return resolve(streamWithRedirect(nextUrl, headers, maxRedirects - 1));
+        }
+        resolve(res);
+      }
+    );
+    req.on('error', reject);
+    req.on('timeout', () => {
+      req.destroy();
+      reject(new Error('Audio stream timeout'));
+    });
+  });
+}
+
 const server = http.createServer(async (req, res) => {
   // 1. Enable Global CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -112,7 +146,7 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // 3. Direct Audio Stream Resolver (/api/stream)
+  // 3. Audio Streaming Proxy with Range Support (/api/stream)
   if (pathname === '/api/stream') {
     const trackId = reqUrl.searchParams.get('trackId');
     const token = reqUrl.searchParams.get('token') || req.headers.authorization?.replace(/^OAuth\s+/, '');
@@ -166,15 +200,36 @@ const server = http.createServer(async (req, res) => {
       const sign = crypto.createHash('md5').update(`${SECRET}${pathClean}${ts}`).digest('hex');
       const directUrl = `https://${host}/get-mp3/${sign}/${ts}${audioPath}`;
 
-      res.writeHead(302, {
-        Location: directUrl,
+      // Forward Range request from browser audio player
+      const forwardHeaders = {};
+      if (req.headers.range) {
+        forwardHeaders['Range'] = req.headers.range;
+      }
+
+      // Stream audio directly from storage node, following redirects
+      const audioRes = await streamWithRedirect(directUrl, forwardHeaders);
+
+      const audioMime = directUrl.includes('.flac') || directUrl.includes('/flac/') ? 'audio/flac' : 'audio/mpeg';
+      const responseHeaders = {
+        'Content-Type': audioMime,
+        'Accept-Ranges': 'bytes',
         'Access-Control-Allow-Origin': '*',
-      });
-      res.end();
+        'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS',
+        'Access-Control-Allow-Headers': 'Range, Authorization',
+      };
+
+      if (audioRes.headers['content-range']) responseHeaders['Content-Range'] = audioRes.headers['content-range'];
+      if (audioRes.headers['content-length']) responseHeaders['Content-Length'] = audioRes.headers['content-length'];
+
+      res.writeHead(audioRes.statusCode || 200, responseHeaders);
+      audioRes.pipe(res);
       return;
     } catch (err) {
-      res.writeHead(500, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: String(err) }));
+      console.error(`[Stream Error] trackId=${trackId}:`, err);
+      if (!res.headersSent) {
+        res.writeHead(500, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+        res.end(JSON.stringify({ error: String(err) }));
+      }
       return;
     }
   }

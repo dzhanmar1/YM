@@ -218,61 +218,8 @@ export async function extractTokenFromCookies(cookies: string): Promise<string> 
 }
 
 export async function getStreamUrl(trackId: string): Promise<string> {
-  try {
-    // 1. Fetch download info for track
-    const data = await ymFetch(`/tracks/${trackId}/download-info`);
-    const results = data.result;
-    if (!Array.isArray(results) || results.length === 0) {
-      throw new Error('Download info array empty');
-    }
-
-    const preferredQuality = localStorage.getItem('audio_quality') || 'hq_320';
-    let best = results[0];
-    if (preferredQuality === 'lossless') {
-      const flac = results.find((r: any) => r.codec === 'flac');
-      if (flac) best = flac;
-      else {
-        best = results
-          .filter((r: any) => r.codec === 'mp3')
-          .sort((a: any, b: any) => (b.bitrateInKbps || 0) - (a.bitrateInKbps || 0))[0] || results[0];
-      }
-    } else if (preferredQuality === 'low_128') {
-      best = results
-        .filter((r: any) => r.codec === 'mp3')
-        .sort((a: any, b: any) => (a.bitrateInKbps || 320) - (b.bitrateInKbps || 320))[0] || results[0];
-    } else {
-      // Default: 320
-      best = results
-        .filter((r: any) => r.codec === 'mp3')
-        .sort((a: any, b: any) => (b.bitrateInKbps || 0) - (a.bitrateInKbps || 0))[0] || results[0];
-    }
-
-    const downloadInfoUrl = best.downloadInfoUrl || best.download_info_url;
-    if (!downloadInfoUrl) throw new Error('downloadInfoUrl missing');
-
-    // 2. Fetch signed link parameters via JSON format
-    const jsonUrl = downloadInfoUrl.includes('?') ? `${downloadInfoUrl}&format=json` : `${downloadInfoUrl}?format=json`;
-    const jsonResp = await fetch(jsonUrl);
-    if (!jsonResp.ok) throw new Error('Failed to fetch download info XML/JSON');
-    const infoJson = await jsonResp.json();
-
-    const host = infoJson.host;
-    const path = infoJson.path;
-    const ts = infoJson.ts;
-
-    if (!host || !path || !ts) throw new Error('Incomplete download parameters');
-
-    // 3. Compute MD5 signature
-    const pathClean = path.replace(/^\//, '');
-    const signStr = `${SECRET}${pathClean}${ts}`;
-    const sign = md5(signStr);
-
-    return `https://${host}/get-mp3/${sign}/${ts}${path}`;
-  } catch (err) {
-    console.warn('Direct stream resolution failed, falling back to /api/stream proxy:', err);
-    const token = getToken() || '';
-    return `/api/stream?trackId=${encodeURIComponent(trackId)}&token=${encodeURIComponent(token)}`;
-  }
+  const token = getToken() || '';
+  return `/api/stream?trackId=${encodeURIComponent(trackId)}&token=${encodeURIComponent(token)}`;
 }
 
 export async function getCacheStats(): Promise<CacheStats> {
