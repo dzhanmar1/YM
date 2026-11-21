@@ -1,7 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import { X, RotateCcw, Heart, Sparkles, Zap, Radio, Check, Flame, Smile, Coffee, CloudRain, Loader2 } from 'lucide-react';
+import {
+  X,
+  RotateCcw,
+  Heart,
+  Sparkles,
+  Zap,
+  Radio,
+  Check,
+  Flame,
+  Smile,
+  Coffee,
+  CloudRain,
+  Loader2,
+} from 'lucide-react';
 import { useWindowStore } from '../store/windowStore';
 import { usePlayerStore } from '../store/playerStore';
+import { useIsMobile } from '../hooks/useIsMobile';
 
 const ACTIVITIES = [
   { id: 'work-background', label: 'Работа', icon: '💼' },
@@ -25,12 +39,13 @@ const CHARACTERS = [
 
 const MOODS = [
   { id: 'active', label: 'Бодрое', icon: Zap, color: '#ff6b35' },
-  { id: 'fun', label: 'Радостное', icon: Smile, color: '#e63946' },
+  { id: 'fun', label: 'Радостное', icon: Smile, color: '#FF3B5C' },
   { id: 'calm', label: 'Спокойное', icon: Coffee, color: '#00b4d8' },
-  { id: 'sad', label: 'Грустное', icon: CloudRain, color: '#7209b7' },
+  { id: 'sad', label: 'Грустное', icon: CloudRain, color: '#a855f7' },
 ];
 
 export const WaveSettingsModal: React.FC = () => {
+  const isMobile = useIsMobile();
   const { waveSettingsOpen, setWaveSettingsOpen } = useWindowStore();
   const { waveMode, startWave, startCustomWave } = usePlayerStore();
 
@@ -112,114 +127,72 @@ export const WaveSettingsModal: React.FC = () => {
 
   return (
     <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.75)',
-        backdropFilter: 'blur(10px)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 999,
-        animation: 'fadeIn 0.15s ease',
-      }}
+      className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4 select-none animate-fade-in"
       onClick={() => setWaveSettingsOpen(false)}
     >
       <div
-        style={{
-          width: 520,
-          maxWidth: '92vw',
-          maxHeight: '90vh',
-          overflowY: 'auto',
-          backgroundColor: '#121212',
-          border: '1px solid rgba(255, 255, 255, 0.1)',
-          boxShadow: '0 24px 60px rgba(0, 0, 0, 0.9)',
-          padding: '24px 20px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 20,
-          borderRadius: 16,
-        }}
         onClick={(e) => e.stopPropagation()}
+        className={`w-full sm:max-w-lg bg-dark-surface border border-dark-outline-variant/40 shadow-2xl flex flex-col gap-5 overflow-y-auto no-scrollbar text-dark-on-surface ${
+          isMobile
+            ? 'rounded-t-3xl max-h-[90vh] animate-sheet-up pb-[calc(18px+var(--sab,0px))] px-5 pt-3'
+            : 'rounded-2xl max-h-[88vh] p-6'
+        }`}
       >
+        {/* Mobile Swipe Handle */}
+        {isMobile && (
+          <div className="flex justify-center pb-1">
+            <span className="w-10 h-1 rounded-full bg-dark-outline-variant hover:bg-muted transition-colors" />
+          </div>
+        )}
+
         {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div
-              style={{
-                width: 34,
-                height: 34,
-                borderRadius: '50%',
-                backgroundColor: 'rgba(163, 2, 26, 0.25)',
-                color: '#ffffff',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <Radio size={18} color="#a3021a" />
+        <div className="flex items-center justify-between border-b border-dark-outline-variant/30 pb-3">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-full bg-accent/20 border border-accent/40 flex items-center justify-center text-accent">
+              <Radio size={18} />
             </div>
             <div>
-              <div style={{ fontSize: 16, fontWeight: 700, color: '#ffffff' }}>
+              <h2 className="font-headline text-title-md sm:text-title-lg text-dark-on-surface">
                 Настройки Моей Волны
-              </div>
-              <div style={{ fontSize: 12, color: '#888888', marginTop: 2 }}>
-                Выберите подходящее настроение и характер треков
-              </div>
+              </h2>
+              <p className="font-body text-body-sm text-muted">
+                Настройте звучание под ваши предпочтения
+              </p>
             </div>
           </div>
 
           <button
+            type="button"
             onClick={() => setWaveSettingsOpen(false)}
-            style={{
-              width: 32,
-              height: 32,
-              borderRadius: 8,
-              border: 'none',
-              backgroundColor: 'rgba(255, 255, 255, 0.06)',
-              color: '#888888',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-            }}
+            aria-label="Закрыть"
+            className="w-8 h-8 rounded-lg bg-dark-surface-container-low border border-dark-outline-variant text-muted hover:text-dark-on-surface flex items-center justify-center active:scale-95 transition-transform"
           >
             <X size={16} />
           </button>
         </div>
 
         {/* 1. НАСТРОЕНИЕ */}
-        <div>
-          <div style={{ fontSize: 11, fontWeight: 700, color: '#888888', textTransform: 'uppercase', marginBottom: 8, letterSpacing: '0.04em' }}>
+        <div className="flex flex-col gap-2">
+          <span className="font-label text-label-xs text-muted uppercase tracking-wider">
             Настроение
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
+          </span>
+          <div className="grid grid-cols-4 gap-2">
             {MOODS.map((m) => {
               const isSelected = selectedMood === m.id;
               const IconComp = m.icon;
               return (
                 <button
                   key={m.id}
+                  type="button"
                   onClick={() => setSelectedMood(isSelected ? null : m.id)}
-                  style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 6,
-                    padding: '12px 6px',
-                    borderRadius: 10,
-                    border: isSelected ? '1px solid #ffffff' : '1px solid rgba(255, 255, 255, 0.08)',
-                    backgroundColor: isSelected ? '#ffffff' : 'rgba(255, 255, 255, 0.04)',
-                    color: isSelected ? '#000000' : '#ffffff',
-                    fontSize: 12,
-                    fontWeight: isSelected ? 700 : 500,
-                    cursor: 'pointer',
-                    transition: 'all 0.15s ease',
-                  }}
+                  className={`flex flex-col items-center justify-center gap-1.5 py-3 px-1 rounded-xl border transition-all active:scale-95 ${
+                    isSelected
+                      ? 'bg-accent/20 border-accent text-accent font-bold shadow-sm shadow-accent/20'
+                      : 'bg-dark-surface-container-low border-dark-outline-variant text-dark-on-surface hover:border-dark-on-surface/40'
+                  }`}
                 >
-                  <IconComp size={18} color={isSelected ? '#000000' : m.color} />
-                  <span>{m.label}</span>
+                  <IconComp size={18} color={isSelected ? '#FF3B5C' : m.color} />
+                  <span className="font-label text-label-sm">{m.label}</span>
                 </button>
               );
             })}
@@ -227,36 +200,30 @@ export const WaveSettingsModal: React.FC = () => {
         </div>
 
         {/* 2. ХАРАКТЕР МУЗЫКИ */}
-        <div>
-          <div style={{ fontSize: 11, fontWeight: 700, color: '#888888', textTransform: 'uppercase', marginBottom: 8, letterSpacing: '0.04em' }}>
+        <div className="flex flex-col gap-2">
+          <span className="font-label text-label-xs text-muted uppercase tracking-wider">
             Характер
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+          </span>
+          <div className="grid grid-cols-3 gap-2">
             {CHARACTERS.map((c) => {
               const isSelected = selectedCharacter === c.id;
               const IconComp = c.icon;
               return (
                 <button
                   key={c.id}
+                  type="button"
                   onClick={() => setSelectedCharacter(isSelected ? null : c.id)}
-                  style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    textAlign: 'center',
-                    gap: 4,
-                    padding: '12px 8px',
-                    borderRadius: 10,
-                    border: isSelected ? '1px solid #ffffff' : '1px solid rgba(255, 255, 255, 0.08)',
-                    backgroundColor: isSelected ? '#ffffff' : 'rgba(255, 255, 255, 0.04)',
-                    color: isSelected ? '#000000' : '#ffffff',
-                    cursor: 'pointer',
-                    transition: 'all 0.15s ease',
-                  }}
+                  className={`flex flex-col items-center text-center gap-1 p-2.5 rounded-xl border transition-all active:scale-95 ${
+                    isSelected
+                      ? 'bg-accent/20 border-accent text-accent font-bold shadow-sm shadow-accent/20'
+                      : 'bg-dark-surface-container-low border-dark-outline-variant text-dark-on-surface hover:border-dark-on-surface/40'
+                  }`}
                 >
-                  <IconComp size={16} color={isSelected ? '#000000' : '#a3021a'} />
-                  <span style={{ fontSize: 12, fontWeight: isSelected ? 700 : 600 }}>{c.label}</span>
-                  <span style={{ fontSize: 10, opacity: isSelected ? 0.7 : 0.45 }}>{c.desc}</span>
+                  <IconComp size={16} className={isSelected ? 'text-accent' : 'text-muted'} />
+                  <span className="font-label text-label-sm font-semibold">{c.label}</span>
+                  <span className="font-body text-[10px] text-muted leading-tight line-clamp-1">
+                    {c.desc}
+                  </span>
                 </button>
               );
             })}
@@ -264,34 +231,26 @@ export const WaveSettingsModal: React.FC = () => {
         </div>
 
         {/* 3. ЗАНЯТИЕ */}
-        <div>
-          <div style={{ fontSize: 11, fontWeight: 700, color: '#888888', textTransform: 'uppercase', marginBottom: 8, letterSpacing: '0.04em' }}>
+        <div className="flex flex-col gap-2">
+          <span className="font-label text-label-xs text-muted uppercase tracking-wider">
             Занятие
-          </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          </span>
+          <div className="flex flex-wrap gap-2">
             {ACTIVITIES.map((a) => {
               const isSelected = selectedActivity === a.id;
               return (
                 <button
                   key={a.id}
+                  type="button"
                   onClick={() => setSelectedActivity(isSelected ? null : a.id)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 6,
-                    padding: '8px 14px',
-                    borderRadius: 20,
-                    border: isSelected ? '1px solid #ffffff' : '1px solid rgba(255, 255, 255, 0.08)',
-                    backgroundColor: isSelected ? '#ffffff' : 'rgba(255, 255, 255, 0.04)',
-                    color: isSelected ? '#000000' : '#ffffff',
-                    fontSize: 12,
-                    fontWeight: isSelected ? 700 : 500,
-                    cursor: 'pointer',
-                    transition: 'all 0.15s ease',
-                  }}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border transition-all active:scale-95 ${
+                    isSelected
+                      ? 'bg-accent/20 border-accent text-accent font-bold shadow-sm shadow-accent/20'
+                      : 'bg-dark-surface-container-low border-dark-outline-variant text-dark-on-surface hover:border-dark-on-surface/40'
+                  }`}
                 >
-                  <span>{a.icon}</span>
-                  <span>{a.label}</span>
+                  <span className="text-sm">{a.icon}</span>
+                  <span className="font-label text-label-sm">{a.label}</span>
                 </button>
               );
             })}
@@ -299,31 +258,25 @@ export const WaveSettingsModal: React.FC = () => {
         </div>
 
         {/* 4. ЯЗЫК */}
-        <div>
-          <div style={{ fontSize: 11, fontWeight: 700, color: '#888888', textTransform: 'uppercase', marginBottom: 8, letterSpacing: '0.04em' }}>
+        <div className="flex flex-col gap-2">
+          <span className="font-label text-label-xs text-muted uppercase tracking-wider">
             Язык
-          </div>
-          <div style={{ display: 'flex', gap: 8 }}>
+          </span>
+          <div className="grid grid-cols-3 gap-2">
             {LANGUAGES.map((l) => {
               const isSelected = selectedLanguage === l.id;
               return (
                 <button
                   key={l.id}
+                  type="button"
                   onClick={() => setSelectedLanguage(isSelected ? null : l.id)}
-                  style={{
-                    flex: 1,
-                    padding: '8px 12px',
-                    borderRadius: 8,
-                    border: isSelected ? '1px solid #ffffff' : '1px solid rgba(255, 255, 255, 0.08)',
-                    backgroundColor: isSelected ? '#ffffff' : 'rgba(255, 255, 255, 0.04)',
-                    color: isSelected ? '#000000' : '#ffffff',
-                    fontSize: 12,
-                    fontWeight: isSelected ? 700 : 500,
-                    cursor: 'pointer',
-                    transition: 'all 0.15s ease',
-                  }}
+                  className={`py-2 px-3 rounded-xl border text-center transition-all active:scale-95 ${
+                    isSelected
+                      ? 'bg-accent/20 border-accent text-accent font-bold shadow-sm shadow-accent/20'
+                      : 'bg-dark-surface-container-low border-dark-outline-variant text-dark-on-surface hover:border-dark-on-surface/40'
+                  }`}
                 >
-                  {l.label}
+                  <span className="font-label text-label-sm">{l.label}</span>
                 </button>
               );
             })}
@@ -331,49 +284,24 @@ export const WaveSettingsModal: React.FC = () => {
         </div>
 
         {/* FOOTER ACTIONS */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid rgba(255, 255, 255, 0.08)', paddingTop: 16, marginTop: 4 }}>
+        <div className="flex items-center justify-between border-t border-dark-outline-variant/30 pt-4 mt-2">
           <button
+            type="button"
             onClick={handleResetToDefault}
             disabled={loading}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-              background: 'transparent',
-              border: 'none',
-              color: '#888888',
-              fontSize: 12,
-              cursor: 'pointer',
-              padding: '6px 0',
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.color = '#ffffff')}
-            onMouseLeave={(e) => (e.currentTarget.style.color = '#888888')}
+            className="inline-flex items-center gap-1.5 text-muted hover:text-dark-on-surface font-label text-label-sm active:scale-95 transition-all"
           >
             <RotateCcw size={13} />
-            <span>Сбросить фильтры</span>
+            <span>Сбросить</span>
           </button>
 
           <button
+            type="button"
             onClick={handleApply}
             disabled={loading}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-              padding: '10px 24px',
-              borderRadius: 8,
-              backgroundColor: '#ffffff',
-              color: '#000000',
-              border: 'none',
-              fontSize: 13,
-              fontWeight: 700,
-              cursor: 'pointer',
-              transition: 'opacity 0.15s ease',
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.9')}
-            onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
+            className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-accent text-dark-surface font-headline font-bold text-label-md shadow-lg shadow-accent/20 hover:brightness-110 active:scale-95 transition-all"
           >
-            {loading && <Loader2 size={14} className="animate-spin" />}
+            {loading && <Loader2 size={15} className="animate-spin text-dark-surface" />}
             <span>Включить волну</span>
           </button>
         </div>

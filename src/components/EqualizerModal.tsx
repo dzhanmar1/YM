@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { X, RotateCcw, Volume2, Sliders } from 'lucide-react';
 import { useEqualizerStore, EQ_FREQUENCIES, EQ_PRESETS } from '../store/equalizerStore';
+import { useIsMobile } from '../hooks/useIsMobile';
 import { EqualizerPreset } from '../types';
 import { audioVisualizer } from '../utils/audioVisualizer';
 
@@ -16,6 +17,7 @@ const PRESET_LABELS: Record<EqualizerPreset, string> = {
 };
 
 export const EqualizerModal: React.FC = () => {
+  const isMobile = useIsMobile();
   const {
     enabled,
     preAmp,
@@ -31,6 +33,17 @@ export const EqualizerModal: React.FC = () => {
   } = useEqualizerStore();
 
   const spectrumCanvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  // Close on Escape
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && modalOpen) {
+        setModalOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [modalOpen, setModalOpen]);
 
   // Real-time audio spectrum analyzer background
   useEffect(() => {
@@ -58,13 +71,13 @@ export const EqualizerModal: React.FC = () => {
         const x = i * (barW + 1.5);
         const y = h - barH;
 
-        // Subtle ambient bar
-        ctx.fillStyle = `rgba(255, 255, 255, ${0.06 + val * 0.22})`;
+        // Subtle neon ambient bar
+        ctx.fillStyle = `rgba(255, 59, 92, ${0.06 + val * 0.32})`;
         ctx.fillRect(x, y, barW, barH);
 
         // Bright peak cap
         if (barH > 2) {
-          ctx.fillStyle = `rgba(255, 255, 255, ${0.35 + val * 0.55})`;
+          ctx.fillStyle = `rgba(255, 59, 92, ${0.45 + val * 0.55})`;
           ctx.fillRect(x, y, barW, 2);
         }
       }
@@ -80,7 +93,7 @@ export const EqualizerModal: React.FC = () => {
 
   // Generate SVG curve points for visualizer
   const width = 640;
-  const height = 120;
+  const height = 110;
   const zeroY = height / 2;
   const stepX = width / (EQ_FREQUENCIES.length - 1);
 
@@ -95,178 +108,100 @@ export const EqualizerModal: React.FC = () => {
 
   return (
     <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.85)',
-        backdropFilter: 'blur(10px)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 100,
-        userSelect: 'none',
-        animation: 'fadeIn 0.15s ease',
-      }}
+      className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4 select-none animate-fade-in"
       onClick={() => setModalOpen(false)}
     >
       <div
-        style={{
-          width: 720,
-          maxWidth: '94vw',
-          maxHeight: '90vh',
-          overflowY: 'auto',
-          backgroundColor: '#0c0c0c',
-          border: '1px solid rgba(255, 255, 255, 0.1)',
-          borderRadius: 16,
-          padding: '24px 20px',
-          boxShadow: '0 24px 64px rgba(0, 0, 0, 0.95), 0 0 32px rgba(163, 2, 26, 0.15)',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 20,
-        }}
         onClick={(e) => e.stopPropagation()}
+        className={`w-full sm:max-w-2xl bg-dark-surface border border-dark-outline-variant/40 shadow-2xl flex flex-col gap-4 overflow-hidden text-dark-on-surface ${
+          isMobile
+            ? 'rounded-t-3xl max-h-[92vh] animate-sheet-up pb-[calc(18px+var(--sab,0px))] px-5 pt-3'
+            : 'rounded-2xl max-h-[90vh] p-6'
+        }`}
       >
+        {/* Mobile Swipe / Drag Indicator */}
+        {isMobile && (
+          <div className="flex justify-center pb-1">
+            <span className="w-10 h-1 rounded-full bg-dark-outline-variant hover:bg-muted transition-colors" />
+          </div>
+        )}
+
         {/* Header Block */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(255, 255, 255, 0.08)', paddingBottom: 16 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: '50%',
-                backgroundColor: 'rgba(163, 2, 26, 0.2)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <Sliders size={18} color="#a3021a" />
+        <div className="flex items-center justify-between border-b border-dark-outline-variant/30 pb-3">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-full bg-accent/20 border border-accent/40 flex items-center justify-center text-accent">
+              <Sliders size={18} />
             </div>
             <div>
-              <div style={{ fontSize: 16, fontWeight: 800, color: '#ffffff' }}>
+              <h2 className="font-headline text-title-md sm:text-title-lg text-dark-on-surface">
                 Эквалайзер
-              </div>
-              <div style={{ fontSize: 12, color: '#888888', marginTop: 2 }}>
+              </h2>
+              <p className="font-body text-body-sm text-muted">
                 10-полосный эквалайзер и профили звучания
-              </div>
+              </p>
             </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div className="flex items-center gap-2">
             {/* Active / Bypass Switch */}
             <button
+              type="button"
               onClick={() => setEnabled(!enabled)}
-              style={{
-                fontSize: 12,
-                fontWeight: 700,
-                padding: '6px 14px',
-                borderRadius: 8,
-                border: enabled ? '1px solid #a3021a' : '1px solid rgba(255, 255, 255, 0.12)',
-                backgroundColor: enabled ? '#a3021a' : 'rgba(255, 255, 255, 0.05)',
-                color: enabled ? '#ffffff' : '#888888',
-                cursor: 'pointer',
-                transition: 'all 0.15s ease',
-              }}
+              className={`font-label text-label-sm px-3 py-1.5 rounded-lg border transition-all active:scale-95 ${
+                enabled
+                  ? 'bg-accent text-dark-surface border-accent font-bold shadow-md shadow-accent/20'
+                  : 'bg-dark-surface-container-low text-muted border-dark-outline-variant hover:text-dark-on-surface'
+              }`}
             >
               {enabled ? 'Включен' : 'Выключен'}
             </button>
 
             {/* Reset */}
             <button
+              type="button"
               onClick={reset}
               title="Сбросить все полосы в 0 dB"
-              style={{
-                background: 'rgba(255, 255, 255, 0.05)',
-                border: '1px solid rgba(255, 255, 255, 0.1)',
-                color: '#aaaaaa',
-                cursor: 'pointer',
-                padding: '6px 12px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                borderRadius: 8,
-                fontSize: 12,
-                fontWeight: 600,
-                transition: 'all 0.12s ease',
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.color = '#ffffff')}
-              onMouseLeave={(e) => (e.currentTarget.style.color = '#aaaaaa')}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-dark-surface-container-low border border-dark-outline-variant text-muted hover:text-dark-on-surface text-label-sm active:scale-95 transition-all"
             >
               <RotateCcw size={13} />
-              <span>Сбросить</span>
+              <span className="hidden sm:inline">Сбросить</span>
             </button>
 
             {/* Close */}
             <button
+              type="button"
               onClick={() => setModalOpen(false)}
-              style={{
-                background: 'none',
-                border: 'none',
-                color: '#888888',
-                cursor: 'pointer',
-                padding: 6,
-                display: 'flex',
-                alignItems: 'center',
-                borderRadius: 6,
-                transition: 'color 0.12s',
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.color = '#ffffff')}
-              onMouseLeave={(e) => (e.currentTarget.style.color = '#888888')}
-              title="Закрыть (ESC)"
+              aria-label="Закрыть"
+              className="w-8 h-8 rounded-lg bg-dark-surface-container-low border border-dark-outline-variant text-muted hover:text-dark-on-surface flex items-center justify-center active:scale-95 transition-transform"
             >
-              <X size={18} />
+              <X size={16} />
             </button>
           </div>
         </div>
 
         {/* Real-time Spectrum Analyzer & Parametric EQ Display */}
-        <div
-          style={{
-            position: 'relative',
-            height: height,
-            backgroundColor: '#050505',
-            border: '1px solid rgba(255, 255, 255, 0.08)',
-            borderRadius: 12,
-            overflow: 'hidden',
-          }}
-        >
+        <div className="relative h-28 bg-dark-surface-container-lowest border border-dark-outline-variant/40 rounded-xl overflow-hidden shrink-0">
           {/* Background Canvas: Real-time Audio Frequency Spectrum */}
           <canvas
             ref={spectrumCanvasRef}
             width={width}
             height={height}
-            style={{
-              position: 'absolute',
-              inset: 0,
-              width: '100%',
-              height: '100%',
-              pointerEvents: 'none',
-            }}
+            className="absolute inset-0 w-full h-full pointer-events-none"
           />
 
-          {/* Dotted Reference Grid: +12dB, +6dB, 0dB, -6dB, -12dB */}
-          <div
-            style={{
-              position: 'absolute',
-              inset: 0,
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'space-between',
-              padding: '8px 12px',
-              pointerEvents: 'none',
-            }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, fontFamily: 'var(--font-mono)', color: 'rgba(255, 255, 255, 0.3)' }}>
+          {/* Dotted Reference Grid: +12dB, 0dB, -12dB */}
+          <div className="absolute inset-0 flex flex-col justify-between p-2.5 pointer-events-none text-mono-sm font-mono text-muted/50">
+            <div className="flex justify-between text-[9px]">
               <span>+12 dB</span>
               <span>20 kHz</span>
             </div>
-            <div style={{ borderBottom: '1px dashed rgba(255, 255, 255, 0.08)', width: '100%' }} />
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, fontFamily: 'var(--font-mono)', color: 'rgba(255, 255, 255, 0.5)' }}>
+            <div className="border-b border-dashed border-dark-outline-variant/30 w-full" />
+            <div className="flex justify-between text-[9px] text-muted">
               <span>0 dB</span>
               <span>1 kHz</span>
             </div>
-            <div style={{ borderBottom: '1px dashed rgba(255, 255, 255, 0.08)', width: '100%' }} />
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, fontFamily: 'var(--font-mono)', color: 'rgba(255, 255, 255, 0.3)' }}>
+            <div className="border-b border-dashed border-dark-outline-variant/30 w-full" />
+            <div className="flex justify-between text-[9px]">
               <span>-12 dB</span>
               <span>20 Hz</span>
             </div>
@@ -278,44 +213,32 @@ export const EqualizerModal: React.FC = () => {
             height="100%"
             viewBox={`0 0 ${width} ${height}`}
             preserveAspectRatio="none"
-            style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}
+            className="absolute inset-0 pointer-events-none"
           >
-            <path d={fillD} fill="rgba(163, 2, 26, 0.15)" />
+            <path d={fillD} fill="rgba(255, 59, 92, 0.15)" />
             <path
               d={pathD}
               fill="none"
-              stroke={enabled ? '#a3021a' : '#555555'}
+              stroke={enabled ? '#FF3B5C' : '#555555'}
               strokeWidth={2.5}
             />
           </svg>
         </div>
 
         {/* Presets Horizontal Selector Bank */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
           {(Object.keys(EQ_PRESETS) as EqualizerPreset[]).map((pKey) => {
             const isActive = preset === pKey;
             return (
               <button
                 key={pKey}
+                type="button"
                 onClick={() => setPreset(pKey)}
-                style={{
-                  fontSize: 11,
-                  fontWeight: 600,
-                  padding: '6px 14px',
-                  borderRadius: 8,
-                  border: '1px solid',
-                  borderColor: isActive ? '#a3021a' : 'rgba(255, 255, 255, 0.08)',
-                  backgroundColor: isActive ? 'rgba(163, 2, 26, 0.25)' : 'rgba(255, 255, 255, 0.04)',
-                  color: isActive ? '#ffffff' : '#888888',
-                  cursor: 'pointer',
-                  transition: 'all 0.12s ease',
-                }}
-                onMouseEnter={(e) => {
-                  if (!isActive) e.currentTarget.style.color = '#ffffff';
-                }}
-                onMouseLeave={(e) => {
-                  if (!isActive) e.currentTarget.style.color = '#888888';
-                }}
+                className={`font-label text-label-sm px-3 py-1.5 rounded-full border whitespace-nowrap active:scale-95 transition-all ${
+                  isActive
+                    ? 'bg-accent/20 border-accent text-accent font-semibold shadow-sm'
+                    : 'bg-dark-surface-container-low border-dark-outline-variant text-muted hover:text-dark-on-surface'
+                }`}
               >
                 {PRESET_LABELS[pKey]}
               </button>
@@ -324,45 +247,19 @@ export const EqualizerModal: React.FC = () => {
         </div>
 
         {/* Precision Fader Rails Section */}
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'flex-end',
-            justifyContent: 'space-between',
-            gap: 10,
-            padding: '16px 12px 10px',
-            backgroundColor: 'rgba(255, 255, 255, 0.02)',
-            border: '1px solid rgba(255, 255, 255, 0.06)',
-            borderRadius: 12,
-            overflowX: 'auto',
-          }}
-        >
+        <div className="flex items-end justify-between gap-1 sm:gap-2.5 p-3 bg-dark-surface-container-low/60 border border-dark-outline-variant/40 rounded-xl overflow-x-auto no-scrollbar">
           {/* Pre-Amp Fader */}
-          <div
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              gap: 8,
-              borderRight: '1px solid rgba(255, 255, 255, 0.08)',
-              paddingRight: 16,
-              paddingLeft: 4,
-            }}
-          >
+          <div className="flex flex-col items-center gap-2 border-r border-dark-outline-variant/40 pr-3 sm:pr-4 pl-1">
             <span
               onClick={() => setPreAmp(0)}
               title="Нажмите для сброса в 0 dB"
-              style={{
-                fontSize: 10,
-                fontFamily: 'var(--font-mono)',
-                color: preAmp !== 0 ? '#a3021a' : '#666666',
-                fontWeight: 800,
-                cursor: 'pointer',
-              }}
+              className={`font-mono text-[10px] tabular-nums font-bold cursor-pointer hover:underline ${
+                preAmp !== 0 ? 'text-accent' : 'text-muted'
+              }`}
             >
               {preAmp > 0 ? `+${preAmp}` : preAmp}
             </span>
-            <div style={{ height: 140, display: 'flex', alignItems: 'center', position: 'relative' }}>
+            <div className="h-28 sm:h-32 flex items-center relative">
               <input
                 type="range"
                 min="-12"
@@ -374,19 +271,14 @@ export const EqualizerModal: React.FC = () => {
                 style={{
                   writingMode: 'vertical-lr',
                   direction: 'rtl',
-                  height: 130,
-                  width: 14,
-                  accentColor: '#a3021a',
-                  cursor: enabled ? 'pointer' : 'default',
-                  opacity: enabled ? 1 : 0.4,
+                  accentColor: '#FF3B5C',
                 }}
+                className="h-24 sm:h-28 w-4 cursor-pointer disabled:opacity-40"
               />
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 4 }}>
-              <Volume2 size={11} color="#666666" />
-              <span style={{ fontSize: 10, fontFamily: 'var(--font-mono)', color: '#888888', fontWeight: 700 }}>
-                PRE
-              </span>
+            <div className="flex items-center gap-1 mt-1">
+              <Volume2 size={10} className="text-muted" />
+              <span className="font-mono text-[10px] font-bold text-muted">PRE</span>
             </div>
           </div>
 
@@ -395,30 +287,17 @@ export const EqualizerModal: React.FC = () => {
             const db = bands[idx] ?? 0;
             const label = freq >= 1000 ? `${freq / 1000}k` : `${freq}`;
             return (
-              <div
-                key={freq}
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  gap: 8,
-                  flex: 1,
-                }}
-              >
+              <div key={freq} className="flex flex-col items-center gap-2 flex-1 min-w-[24px]">
                 <span
                   onClick={() => setBand(idx, 0)}
                   title="Нажмите для сброса в 0 dB"
-                  style={{
-                    fontSize: 10,
-                    fontFamily: 'var(--font-mono)',
-                    color: db !== 0 ? '#a3021a' : '#666666',
-                    fontWeight: 800,
-                    cursor: 'pointer',
-                  }}
+                  className={`font-mono text-[10px] tabular-nums font-bold cursor-pointer hover:underline ${
+                    db !== 0 ? 'text-accent' : 'text-muted'
+                  }`}
                 >
                   {db > 0 ? `+${db}` : db}
                 </span>
-                <div style={{ height: 140, display: 'flex', alignItems: 'center', position: 'relative' }}>
+                <div className="h-28 sm:h-32 flex items-center relative">
                   <input
                     type="range"
                     min="-12"
@@ -430,15 +309,12 @@ export const EqualizerModal: React.FC = () => {
                     style={{
                       writingMode: 'vertical-lr',
                       direction: 'rtl',
-                      height: 130,
-                      width: 14,
-                      accentColor: '#a3021a',
-                      cursor: enabled ? 'pointer' : 'default',
-                      opacity: enabled ? 1 : 0.4,
+                      accentColor: '#FF3B5C',
                     }}
+                    className="h-24 sm:h-28 w-4 cursor-pointer disabled:opacity-40"
                   />
                 </div>
-                <span style={{ fontSize: 10, fontFamily: 'var(--font-mono)', color: '#888888', fontWeight: 600, marginTop: 4 }}>
+                <span className="font-mono text-[10px] font-semibold text-muted mt-1">
                   {label}
                 </span>
               </div>

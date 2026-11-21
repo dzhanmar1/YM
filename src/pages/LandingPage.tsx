@@ -17,6 +17,7 @@ import { usePlayerStore } from '../store/playerStore';
 import { useWindowStore } from '../store/windowStore';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { TrackItemRow } from '../components/TrackItemRow';
+import { WaveVisualizerOrb } from '../components/WaveVisualizerOrb';
 import type { LandingData, PersonalPlaylist, TrackItem, ChartTrack } from '../types';
 import { formatCoverUrl } from '../types';
 
@@ -225,22 +226,17 @@ export function LandingPage({ onSelectTab }: LandingPageProps) {
   // ==========================================
   if (isMobile) {
     return (
-      <div className="min-h-full w-full max-w-md mx-auto flex flex-col relative pb-44 bg-dark-surface text-dark-on-surface antialiased select-none overflow-y-auto no-scrollbar">
-        {/* Minimal Airy Top Bar: Brand + Quick Search + Settings */}
-        <header className="sticky top-0 z-20 bg-dark-surface/95 backdrop-blur-md px-page-margin pt-[calc(10px+var(--sat,0px))] pb-gutter-md flex items-center justify-between gap-gutter-md border-b border-dark-outline-variant/30 shrink-0">
-          <div className="flex items-center gap-gutter-sm shrink-0">
-            <span className="w-2.5 h-2.5 rounded-full bg-accent shadow-[0_0_8px_rgba(255,59,92,0.8)]" />
-            <span className="font-display text-title-lg text-dark-on-surface tracking-tight">YM</span>
-          </div>
-
+      <div className="h-full w-full flex flex-col relative pb-44 bg-dark-surface text-dark-on-surface antialiased select-none overflow-y-auto overflow-x-hidden no-scrollbar">
+        {/* Minimal Airy Top Bar: Quick Search + Wave Settings + App Settings */}
+        <header className="sticky top-0 z-20 bg-dark-surface/95 backdrop-blur-md px-page-margin pt-[calc(10px+var(--sat,0px))] pb-gutter-md flex items-center justify-between gap-gutter-sm border-b border-dark-outline-variant/30 shrink-0">
           <button
             type="button"
             onClick={() => onSelectTab?.('search')}
             aria-label="Быстрый поиск музыки"
-            className="flex-1 flex items-center gap-gutter-sm px-gutter-lg py-gutter-sm rounded-full bg-dark-surface-container-low border border-dark-outline-variant text-muted hover:text-dark-on-surface transition-colors duration-state-change"
+            className="flex-1 flex items-center gap-gutter-sm px-gutter-lg py-2 rounded-full bg-dark-surface-container-low border border-dark-outline-variant text-muted hover:text-dark-on-surface transition-colors duration-state-change active:scale-[0.99]"
           >
             <Search size={16} />
-            <span className="font-body text-body-sm truncate">Треки, артисты, настроение</span>
+            <span className="font-body text-body-sm truncate">Треки, артисты, плейлисты</span>
           </button>
 
           <div className="flex items-center gap-gutter-xs shrink-0">
@@ -273,40 +269,18 @@ export function LandingPage({ onSelectTab }: LandingPageProps) {
             <div className="pointer-events-none absolute top-0 left-1/2 -translate-x-1/2 w-64 h-64 rounded-full bg-accent opacity-15 blur-3xl" />
 
             {/* Visual Acoustic Orb */}
-            <div className="relative w-44 h-44 rounded-full overflow-hidden border border-dark-outline-variant shadow-2xl bg-gradient-to-tr from-dark-surface-container-lowest via-accent/30 to-dark-surface-container-high group">
-              {/* Radial Animated Waves Background */}
-              <div
-                className={`w-full h-full object-cover transition-transform duration-700 ${
-                  waveMode && isPlaying ? 'scale-110 animate-spin [animation-duration:12s]' : ''
-                }`}
-                style={{
-                  background:
-                    'radial-gradient(circle at 35% 35%, #ff3b5c 0%, #BA0035 35%, #181B24 75%, #0B0E17 100%)',
-                }}
-              />
-              <div className="absolute inset-0 flex items-center justify-center bg-dark-surface/30 backdrop-blur-[2px]">
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (waveMode && isPlaying) {
-                      togglePlay();
-                    } else if (waveMode) {
-                      togglePlay();
-                    } else {
-                      startWave();
-                    }
-                  }}
-                  aria-label="Запустить Мою Волну"
-                  className="w-16 h-16 rounded-full bg-dark-on-surface text-dark-surface flex items-center justify-center shadow-xl hover:scale-105 active:scale-95 transition-transform duration-state-change"
-                >
-                  {waveMode && isPlaying ? (
-                    <Pause size={28} fill="currentColor" />
-                  ) : (
-                    <Play size={28} fill="currentColor" className="ml-1" />
-                  )}
-                </button>
-              </div>
-            </div>
+            <WaveVisualizerOrb
+              onTogglePlay={() => {
+                if (waveMode && isPlaying) {
+                  togglePlay();
+                } else if (waveMode) {
+                  togglePlay();
+                } else {
+                  startWave();
+                }
+              }}
+              isPlaying={Boolean(waveMode && isPlaying)}
+            />
 
             <div className="flex flex-col items-center gap-gutter-xs">
               <h1 className="font-display text-display-lg-mobile text-dark-on-surface text-balance">
@@ -318,8 +292,8 @@ export function LandingPage({ onSelectTab }: LandingPageProps) {
             </div>
 
             {/* Swipeable Mood Chips */}
-            <div className="w-full overflow-x-auto no-scrollbar -mx-page-margin px-page-margin">
-              <div className="inline-flex items-center gap-gutter-sm" role="group" aria-label="Настроение потока">
+            <div className="w-full overflow-x-auto no-scrollbar py-1">
+              <div className="inline-flex items-center gap-gutter-sm px-1" role="group" aria-label="Настроение потока">
                 {MOOD_CHIPS.map((chip) => {
                   const isPressed = Boolean(
                     waveMode &&
@@ -341,7 +315,7 @@ export function LandingPage({ onSelectTab }: LandingPageProps) {
                           startCustomWave(chip.opt);
                         }
                       }}
-                      className={`inline-flex items-center px-gutter-lg py-gutter-sm rounded-full border shrink-0 transition-colors duration-state-change ${
+                      className={`inline-flex items-center px-gutter-lg py-gutter-sm rounded-full border shrink-0 transition-all duration-state-change active:scale-95 ${
                         isPressed
                           ? 'bg-accent/15 text-dark-primary border-accent font-semibold shadow-sm'
                           : 'bg-dark-surface-container-low text-dark-on-surface border-dark-outline-variant hover:border-dark-on-surface/40'
@@ -365,17 +339,17 @@ export function LandingPage({ onSelectTab }: LandingPageProps) {
             </div>
 
             <div className="grid grid-cols-2 gap-gutter-md items-stretch">
-              {/* Tall Feature Card: Премьера */}
-              {premierePlaylist ? (
+              {/* Tall Feature Card: Плейлист дня / Микс дня (Prominent Big Card) */}
+              {dailyMixPlaylist ? (
                 <article
-                  onClick={() => handleSelectPlaylist(premierePlaylist)}
+                  onClick={() => handleSelectPlaylist(dailyMixPlaylist)}
                   className="rounded-xl bg-dark-surface-container-low p-gutter-md flex flex-col justify-between gap-gutter-md border border-dark-outline-variant cursor-pointer active:scale-[0.98] transition-transform duration-state-change"
                 >
                   <div className="relative w-full aspect-square rounded-lg overflow-hidden bg-dark-surface-container shadow-sm">
-                    {premierePlaylist.cover_uri ? (
+                    {dailyMixPlaylist.cover_uri ? (
                       <img
-                        src={formatCoverUrl(premierePlaylist.cover_uri, '400x400')}
-                        alt={premierePlaylist.title}
+                        src={formatCoverUrl(dailyMixPlaylist.cover_uri, '400x400')}
+                        alt={dailyMixPlaylist.title}
                         className="w-full h-full object-cover"
                       />
                     ) : (
@@ -386,18 +360,18 @@ export function LandingPage({ onSelectTab }: LandingPageProps) {
                   </div>
                   <div className="flex items-end justify-between gap-gutter-sm">
                     <div className="flex flex-col gap-gutter-xs min-w-0">
-                      <span className="font-label text-label-sm text-accent">Новинки</span>
+                      <span className="font-label text-label-sm text-accent">Плейлист дня</span>
                       <h3 className="font-headline text-title-lg text-dark-on-surface truncate">
-                        {premierePlaylist.title}
+                        {dailyMixPlaylist.title}
                       </h3>
                       <span className="font-mono text-mono-sm text-muted tabular-nums">
-                        {premierePlaylist.track_count || 20} треков
+                        {dailyMixPlaylist.track_count || 30} треков
                       </span>
                     </div>
                     <button
                       type="button"
-                      onClick={(e) => handleQuickPlayPlaylist(e, premierePlaylist)}
-                      aria-label="Слушать Премьеру"
+                      onClick={(e) => handleQuickPlayPlaylist(e, dailyMixPlaylist)}
+                      aria-label="Слушать Плейлист дня"
                       className="shrink-0 w-9 h-9 rounded-full bg-dark-on-surface text-dark-surface flex items-center justify-center active:scale-95 transition-transform duration-state-change shadow-md"
                     >
                       <Play size={16} fill="currentColor" className="ml-0.5" />
@@ -406,8 +380,36 @@ export function LandingPage({ onSelectTab }: LandingPageProps) {
                 </article>
               ) : null}
 
-              {/* Stacked Right Column: Дежавю + Микс дня */}
+              {/* Stacked Right Column: Премьера + Дежавю */}
               <div className="flex flex-col gap-gutter-md">
+                {premierePlaylist && (
+                  <article
+                    onClick={() => handleSelectPlaylist(premierePlaylist)}
+                    className="flex-1 rounded-xl bg-dark-surface-container-low p-gutter-md flex items-center gap-gutter-md border border-dark-outline-variant cursor-pointer active:scale-[0.98] transition-transform duration-state-change"
+                  >
+                    {premierePlaylist.cover_uri ? (
+                      <img
+                        src={formatCoverUrl(premierePlaylist.cover_uri, '200x200')}
+                        alt={premierePlaylist.title}
+                        className="w-14 h-14 rounded-lg object-cover shrink-0 bg-dark-surface-container shadow-sm"
+                      />
+                    ) : (
+                      <div className="w-14 h-14 rounded-lg bg-dark-surface-container flex items-center justify-center shrink-0 text-accent">
+                        <Sparkles size={24} />
+                      </div>
+                    )}
+                    <div className="flex flex-col min-w-0">
+                      <span className="font-label text-label-xs text-accent">Новинки</span>
+                      <h3 className="font-headline text-title-md text-dark-on-surface truncate">
+                        {premierePlaylist.title}
+                      </h3>
+                      <span className="font-mono text-label-sm text-muted tabular-nums">
+                        {premierePlaylist.track_count || 20} треков
+                      </span>
+                    </div>
+                  </article>
+                )}
+
                 {dejavuPlaylist && (
                   <article
                     onClick={() => handleSelectPlaylist(dejavuPlaylist)}
@@ -425,37 +427,13 @@ export function LandingPage({ onSelectTab }: LandingPageProps) {
                       </div>
                     )}
                     <div className="flex flex-col min-w-0">
+                      <span className="font-label text-label-xs text-muted">Вспомнить</span>
                       <h3 className="font-headline text-title-md text-dark-on-surface truncate">
                         {dejavuPlaylist.title}
                       </h3>
                       <span className="font-mono text-label-sm text-muted tabular-nums">
                         {dejavuPlaylist.track_count || 30} треков
                       </span>
-                    </div>
-                  </article>
-                )}
-
-                {dailyMixPlaylist && (
-                  <article
-                    onClick={() => handleSelectPlaylist(dailyMixPlaylist)}
-                    className="flex-1 rounded-xl bg-dark-surface-container-low p-gutter-md flex items-center gap-gutter-md border border-dark-outline-variant cursor-pointer active:scale-[0.98] transition-transform duration-state-change"
-                  >
-                    {dailyMixPlaylist.cover_uri ? (
-                      <img
-                        src={formatCoverUrl(dailyMixPlaylist.cover_uri, '200x200')}
-                        alt={dailyMixPlaylist.title}
-                        className="w-14 h-14 rounded-lg object-cover shrink-0 bg-dark-surface-container shadow-sm"
-                      />
-                    ) : (
-                      <div className="w-14 h-14 rounded-lg bg-dark-surface-container flex items-center justify-center shrink-0 text-accent">
-                        <Sparkles size={24} />
-                      </div>
-                    )}
-                    <div className="flex flex-col min-w-0">
-                      <h3 className="font-headline text-title-md text-dark-on-surface truncate">
-                        {dailyMixPlaylist.title}
-                      </h3>
-                      <span className="font-label text-label-sm text-accent">Обновлён</span>
                     </div>
                   </article>
                 )}

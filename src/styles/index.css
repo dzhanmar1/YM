@@ -107,10 +107,41 @@ body, html {
 /* Micro Button interaction */
 button {
   font-family: inherit;
-  transition: all 0.12s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.15s cubic-bezier(0.2, 0, 0, 1);
 }
 button:active {
-  transform: scale(0.97);
+  transform: scale(0.96);
+}
+
+@keyframes heart-pop {
+  0% { transform: scale(1); }
+  45% { transform: scale(1.38); }
+  75% { transform: scale(0.92); }
+  100% { transform: scale(1); }
+}
+.animate-heart-pop {
+  animation: heart-pop 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes orb-fluid {
+  0% { transform: rotate(0deg) scale(1); filter: hue-rotate(0deg); }
+  50% { transform: rotate(180deg) scale(1.08); filter: hue-rotate(25deg); }
+  100% { transform: rotate(360deg) scale(1); filter: hue-rotate(0deg); }
+}
+
+@keyframes orb-ripple {
+  0% { transform: scale(0.95); opacity: 0.55; }
+  50% { transform: scale(1.15); opacity: 0.15; }
+  100% { transform: scale(0.95); opacity: 0.55; }
+}
+
+@keyframes modal-sheet-up {
+  from { transform: translateY(100%); opacity: 0.5; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.animate-sheet-up {
+  animation: modal-sheet-up 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 /* Range input slider styling */

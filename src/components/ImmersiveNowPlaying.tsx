@@ -27,6 +27,8 @@ import { useEqualizerStore } from '../store/equalizerStore';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { AmbientBackgroundVisualizer } from './AmbientBackgroundVisualizer';
 import { LyricsModal } from './LyricsModal';
+import { MobileQueueModal } from './mobile/MobileQueueModal';
+import { DynamicTrackWaveform } from './DynamicTrackWaveform';
 import { formatCoverUrl, formatDuration } from '../types';
 import { invoke, isTauri } from '@tauri-apps/api/core';
 
@@ -189,95 +191,10 @@ export function ImmersiveNowPlaying() {
         mobileTab === 'lyrics' ? (
           <LyricsModal onBackToPlayer={() => setMobileTab('player')} />
         ) : mobileTab === 'queue' ? (
-          <div className="h-full w-full max-w-md mx-auto flex flex-col justify-between relative overflow-hidden bg-dark-surface text-dark-on-surface antialiased select-none">
-            {/* Context Header */}
-            <header className="sticky top-0 z-20 bg-dark-surface/95 backdrop-blur-md px-page-margin pt-gutter-md pb-gutter-md flex items-center justify-between border-b border-dark-outline-variant/30 shrink-0">
-              <button
-                type="button"
-                onClick={() => setMobileTab('player')}
-                aria-label="Вернуться к плееру"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-dark-surface-container-low border border-dark-outline-variant text-body-sm text-dark-on-surface active:scale-95 transition-transform"
-              >
-                <ChevronLeft size={16} />
-                <span className="font-label text-label-sm">Плеер</span>
-              </button>
-
-              <div className="flex items-center gap-2">
-                <ListMusic size={16} className="text-accent" />
-                <h2 className="font-headline text-title-md text-dark-on-surface">
-                  Очередь ({queue.length})
-                </h2>
-              </div>
-
-              <div className="w-16" />
-            </header>
-
-            {/* Queue List */}
-            <div className="flex-1 overflow-y-auto no-scrollbar px-page-margin py-gutter-md flex flex-col gap-1.5">
-              {queue.length === 0 ? (
-                <div className="flex-1 flex flex-col items-center justify-center text-muted gap-2 py-24">
-                  <ListMusic size={40} className="text-muted/60" />
-                  <span className="font-body text-body-md">Очередь воспроизведения пуста</span>
-                </div>
-              ) : (
-                queue.map((track, idx) => {
-                  const isCurrent = idx === queueIndex;
-                  const trackCover = track.cover_uri ? formatCoverUrl(track.cover_uri, '100x100') : null;
-                  return (
-                    <div
-                      key={`${track.id}-${idx}`}
-                      onClick={() => playTrack(track, queue, idx)}
-                      className={`flex items-center justify-between gap-gutter-md p-gutter-sm rounded-xl cursor-pointer transition-colors ${
-                        isCurrent
-                          ? 'bg-dark-surface-container-high border border-accent/40 shadow-sm'
-                          : 'hover:bg-dark-surface-container-low active:bg-dark-surface-container'
-                      }`}
-                    >
-                      <div className="flex items-center gap-gutter-md min-w-0 flex-1">
-                        <span
-                          className={`font-mono text-label-sm w-5 text-center tabular-nums shrink-0 ${
-                            isCurrent ? 'text-accent font-bold' : 'text-muted'
-                          }`}
-                        >
-                          {idx + 1}
-                        </span>
-                        {trackCover ? (
-                          <img
-                            src={trackCover}
-                            alt=""
-                            className="w-11 h-11 rounded-md object-cover shrink-0 bg-dark-surface-container border border-dark-outline-variant/30"
-                          />
-                        ) : (
-                          <div className="w-11 h-11 rounded-md bg-dark-surface-container flex items-center justify-center shrink-0 text-accent">
-                            <Disc size={18} />
-                          </div>
-                        )}
-                        <div className="flex flex-col min-w-0">
-                          <span
-                            className={`font-title text-title-md truncate ${
-                              isCurrent ? 'text-accent font-semibold' : 'text-dark-on-surface'
-                            }`}
-                          >
-                            {track.title}
-                          </span>
-                          <span className="font-body text-body-sm text-muted truncate">
-                            {track.artists.join(', ')}
-                          </span>
-                        </div>
-                      </div>
-
-                      <span className="font-mono text-label-sm text-muted tabular-nums shrink-0">
-                        {formatDuration(track.duration_ms || 0)}
-                      </span>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-          </div>
+          <MobileQueueModal onBackToPlayer={() => setMobileTab('player')} />
         ) : (
           <div
-            className="h-full w-full max-w-md mx-auto flex flex-col justify-between relative overflow-hidden px-page-margin pt-gutter-md pb-gutter-xl select-none"
+            className="h-full w-full max-w-lg mx-auto flex flex-col justify-between relative overflow-hidden px-page-margin pt-gutter-md pb-gutter-xl select-none"
             onTouchStart={handleHeaderTouchStart}
             onTouchEnd={handleHeaderTouchEnd}
           >
@@ -339,8 +256,8 @@ export function ImmersiveNowPlaying() {
                     type="button"
                     onClick={() => toggleLike(currentTrack)}
                     aria-label="Добавить в любимые"
-                    className={`shrink-0 w-11 h-11 rounded-full bg-dark-surface-container-low border border-dark-outline-variant flex items-center justify-center active:scale-95 transition-transform duration-state-change ${
-                      trackLiked ? 'text-accent' : 'text-muted hover:text-dark-on-surface'
+                    className={`shrink-0 w-11 h-11 rounded-full bg-dark-surface-container-low border border-dark-outline-variant flex items-center justify-center active:scale-90 transition-transform duration-state-change ${
+                      trackLiked ? 'text-accent animate-heart-pop' : 'text-muted hover:text-dark-on-surface'
                     }`}
                   >
                     <Heart size={20} fill={trackLiked ? 'currentColor' : 'none'} />
@@ -352,7 +269,7 @@ export function ImmersiveNowPlaying() {
               <button
                 type="button"
                 onClick={() => setMobileTab('lyrics')}
-                className="w-full rounded-lg bg-dark-surface-container-low border border-dark-outline-variant px-gutter-lg py-gutter-md flex items-center justify-between gap-gutter-md hover:bg-dark-surface-container transition-colors duration-state-change text-left"
+                className="w-full rounded-lg bg-dark-surface-container-low border border-dark-outline-variant px-gutter-lg py-gutter-md flex items-center justify-between gap-gutter-md hover:bg-dark-surface-container active:scale-[0.99] transition-all duration-state-change text-left"
               >
                 <div className="flex flex-col gap-gutter-xs min-w-0">
                   <span className="font-label text-label-sm text-accent">Текст сейчас</span>
@@ -370,35 +287,14 @@ export function ImmersiveNowPlaying() {
             <footer className="relative z-10 flex flex-col gap-gutter-lg shrink-0">
               {/* Dynamic Waveform Progress */}
               <div className="flex flex-col gap-gutter-xs">
-                <div
-                  ref={scrubberRef}
-                  onMouseDown={handleScrubberMouseDown}
-                  onTouchStart={handleScrubberTouchStart}
-                  onTouchMove={handleScrubberTouchMove}
-                  onTouchEnd={handleScrubberTouchEnd}
-                  className="flex items-center justify-between gap-gutter-xs h-7 px-gutter-xs cursor-pointer"
-                  aria-label="Прогресс трека"
-                >
-                  {Array.from({ length: 22 }).map((_, i) => {
-                    const barPercent = (i / 21) * 100;
-                    const isPassed = displayedPercent >= barPercent;
-                    const heights = [12, 20, 16, 28, 20, 24, 12, 24, 16, 28, 20, 12, 24, 16, 20, 12, 24, 16, 20, 24, 16, 8];
-                    const height = heights[i % heights.length];
-                    return (
-                      <span
-                        key={i}
-                        className={`w-1 rounded-full transition-colors duration-100 ${
-                          isPassed
-                            ? 'bg-accent'
-                            : 'bg-dark-surface-container-highest'
-                        }`}
-                        style={{ height: `${height}px` }}
-                      />
-                    );
-                  })}
-                </div>
-
-                <div className="flex items-center justify-between">
+                <DynamicTrackWaveform
+                  trackId={currentTrack?.id || ''}
+                  currentTime={currentTime}
+                  duration={duration}
+                  isPlaying={isPlaying}
+                  onSeek={seek}
+                />
+                <div className="flex items-center justify-between px-1">
                   <span className="font-mono text-mono-sm text-muted tabular-nums">
                     {formatDuration(currentTime * 1000)}
                   </span>

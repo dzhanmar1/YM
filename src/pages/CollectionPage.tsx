@@ -201,7 +201,7 @@ export function CollectionPage({ onSelectTab }: CollectionPageProps) {
   // ==========================================
   if (isMobile) {
     return (
-      <div className="min-h-full w-full max-w-md mx-auto flex flex-col relative pb-44 bg-dark-surface text-dark-on-surface antialiased select-none overflow-y-auto no-scrollbar">
+      <div className="h-full w-full flex flex-col relative pb-44 bg-dark-surface text-dark-on-surface antialiased select-none overflow-y-auto overflow-x-hidden no-scrollbar">
         {/* Clean Top Bar */}
         <header className="sticky top-0 z-20 bg-dark-surface/95 backdrop-blur-md px-page-margin pt-[calc(10px+var(--sat,0px))] pb-gutter-md flex items-center justify-between gap-gutter-md border-b border-dark-outline-variant/30 shrink-0">
           <h1 className="font-display text-headline-lg text-dark-on-surface">Коллекция</h1>
@@ -273,8 +273,8 @@ export function CollectionPage({ onSelectTab }: CollectionPageProps) {
             ) : visiblePlaylists.length === 0 ? (
               <div className="text-muted text-body-sm py-3">Плейлистов не найдено</div>
             ) : (
-              <div className="overflow-x-auto no-scrollbar -mx-page-margin px-page-margin">
-                <div className="inline-flex items-stretch gap-gutter-md">
+              <div className="w-full overflow-x-auto no-scrollbar py-1">
+                <div className="inline-flex items-stretch gap-gutter-md px-1">
                   {visiblePlaylists.map((pl) => (
                     <article
                       key={pl.kind}

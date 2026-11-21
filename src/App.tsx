@@ -164,6 +164,8 @@ export function App() {
       <main
         style={{
           flex: 1,
+          minHeight: 0,
+          height: '100%',
           overflow: 'hidden',
           position: 'relative',
           backgroundColor: '#10131C',
@@ -178,7 +180,7 @@ export function App() {
 
       {/* FOOTER: Mobile 2-Tier Thumb Dock vs Desktop PlayerBar */}
       {isMobile ? (
-        <div className="fixed bottom-0 left-0 right-0 z-30 max-w-md mx-auto px-gutter-md pb-[calc(14px+var(--sab,0px))] pt-gutter-sm bg-gradient-to-t from-dark-surface via-dark-surface/95 to-transparent pointer-events-none">
+        <div className="fixed bottom-0 left-0 right-0 z-30 w-full max-w-lg mx-auto px-4 pb-[calc(14px+var(--sab,0px))] pt-2 bg-gradient-to-t from-dark-surface via-dark-surface/95 to-transparent pointer-events-none">
           <div className="flex flex-col gap-gutter-sm pointer-events-auto">
             <MobileMiniPlayer />
             <BottomNav currentTab={currentTab} onSelectTab={setCurrentTab} />
