@@ -7,7 +7,6 @@ import { ImmersiveNowPlaying } from './components/ImmersiveNowPlaying';
 import { EqualizerModal } from './components/EqualizerModal';
 import { WaveSettingsModal } from './components/WaveSettingsModal';
 import { SettingsModal } from './components/SettingsModal';
-import { MobileHeader } from './components/mobile/MobileHeader';
 import { BottomNav } from './components/mobile/BottomNav';
 import { MobileMiniPlayer } from './components/mobile/MobileMiniPlayer';
 import { LandingPage } from './pages/LandingPage';
@@ -114,7 +113,7 @@ export function App() {
         style={{
           height: '100vh',
           width: '100vw',
-          backgroundColor: '#050505',
+          backgroundColor: '#10131C',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
@@ -123,7 +122,7 @@ export function App() {
           color: '#888888',
         }}
       >
-        <Loader2 size={32} className="animate-spin" color="#ffffff" />
+        <Loader2 size={32} className="animate-spin text-accent" />
         <span style={{ fontSize: 13, fontWeight: 500, color: '#aaaaaa' }}>
           Загрузка Музыки...
         </span>
@@ -143,7 +142,7 @@ export function App() {
         height: '100vh',
         width: '100vw',
         overflow: 'hidden',
-        backgroundColor: '#050505',
+        backgroundColor: '#10131C',
         position: 'relative',
         userSelect: 'none',
       }}
@@ -151,10 +150,8 @@ export function App() {
       {/* Invisible Audio Engine & Background State Sync */}
       <AudioEngine />
 
-      {/* HEADER: MobileHeader on Phone vs Frameless TitleBar on Desktop */}
-      {isMobile ? (
-        <MobileHeader currentTab={currentTab} />
-      ) : (
+      {/* HEADER: Desktop Frameless TitleBar (Mobile pages render their own Airy Top Bar) */}
+      {!isMobile && (
         <TitleBar
           currentTab={currentTab}
           onSelectTab={setCurrentTab}
@@ -169,23 +166,24 @@ export function App() {
           flex: 1,
           overflow: 'hidden',
           position: 'relative',
-          backgroundColor: '#050505',
-          paddingBottom: isMobile ? 'calc(var(--mobile-bottom-nav-height) + var(--sab))' : 0,
+          backgroundColor: '#10131C',
         }}
       >
-        {currentTab === 'landing' && <LandingPage />}
-        {currentTab === 'collection' && <CollectionPage />}
+        {currentTab === 'landing' && <LandingPage onSelectTab={setCurrentTab} />}
+        {currentTab === 'collection' && <CollectionPage onSelectTab={setCurrentTab} />}
         {currentTab === 'search' && (
           <SearchPage query={searchQuery} onQueryChange={setSearchQuery} />
         )}
       </main>
 
-      {/* FOOTER: Mobile Mini Player + Bottom Navigation vs Desktop PlayerBar */}
+      {/* FOOTER: Mobile 2-Tier Thumb Dock vs Desktop PlayerBar */}
       {isMobile ? (
-        <>
-          <MobileMiniPlayer />
-          <BottomNav currentTab={currentTab} onSelectTab={setCurrentTab} />
-        </>
+        <div className="fixed bottom-0 left-0 right-0 z-30 max-w-md mx-auto px-gutter-md pb-[calc(14px+var(--sab,0px))] pt-gutter-sm bg-gradient-to-t from-dark-surface via-dark-surface/95 to-transparent pointer-events-none">
+          <div className="flex flex-col gap-gutter-sm pointer-events-auto">
+            <MobileMiniPlayer />
+            <BottomNav currentTab={currentTab} onSelectTab={setCurrentTab} />
+          </div>
+        </div>
       ) : (
         <>
           <PlayerBar />

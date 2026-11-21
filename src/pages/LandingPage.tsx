@@ -1,17 +1,16 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Play,
   Pause,
   ArrowLeft,
   Flame,
   Sparkles,
-  TrendingUp,
-  Disc,
-  Loader2,
   Radio,
-  Clock,
-  Compass,
-  Sliders,
+  SlidersHorizontal,
+  Search,
+  Loader2,
+  Disc,
+  Settings,
 } from 'lucide-react';
 import * as api from '../api';
 import { usePlayerStore } from '../store/playerStore';
@@ -21,7 +20,19 @@ import { TrackItemRow } from '../components/TrackItemRow';
 import type { LandingData, PersonalPlaylist, TrackItem, ChartTrack } from '../types';
 import { formatCoverUrl } from '../types';
 
-export function LandingPage() {
+interface LandingPageProps {
+  onSelectTab?: (tab: 'landing' | 'collection' | 'search') => void;
+}
+
+const MOOD_CHIPS = [
+  { label: 'Бодрое', opt: { mood: 'active' } },
+  { label: 'Ночной драйв', opt: { activity: 'driving' } },
+  { label: 'Фокус', opt: { activity: 'work-background' } },
+  { label: 'Незнакомое', opt: { character: 'discover' } },
+  { label: 'Любимое', opt: { character: 'favorite' } },
+];
+
+export function LandingPage({ onSelectTab }: LandingPageProps) {
   const [data, setData] = useState<LandingData | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedPlaylist, setSelectedPlaylist] = useState<PersonalPlaylist | null>(null);
@@ -29,8 +40,18 @@ export function LandingPage() {
   const [loadingTracks, setLoadingTracks] = useState(false);
   const [viewMode, setViewMode] = useState<'overview' | 'chart'>('overview');
 
-  const { playTrack, setQueue, currentTrack, isPlaying, togglePlay, waveMode, waveSettings, startWave, startCustomWave } = usePlayerStore();
-  const { setWaveSettingsOpen } = useWindowStore();
+  const {
+    playTrack,
+    setQueue,
+    isPlaying,
+    togglePlay,
+    waveMode,
+    waveSettings,
+    startWave,
+    startCustomWave,
+  } = usePlayerStore();
+
+  const { setWaveSettingsOpen, setSettingsOpen } = useWindowStore();
   const isMobile = useIsMobile();
 
   useEffect(() => {
@@ -75,142 +96,88 @@ export function LandingPage() {
     }
   };
 
+  const handlePlayChartTrack = (track: TrackItem, index: number) => {
+    const allChartTracks = (data?.chart_tracks || []).map((ct) => ct.track);
+    playTrack(track, allChartTracks, index);
+  };
+
   // 1. Detail View when a Personal Playlist is opened
   if (selectedPlaylist) {
     return (
-      <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <div className="h-full flex flex-col overflow-hidden bg-dark-surface text-dark-on-surface">
         {/* Detail Header */}
-        <div
-          style={{
-            padding: isMobile ? '16px 16px 12px' : '28px 36px 20px',
-            borderBottom: '1px solid var(--border-subtle)',
-            flexShrink: 0,
-            backgroundColor: '#070707',
-          }}
-        >
+        <div className="p-gutter-md border-b border-dark-outline-variant bg-dark-surface-container-low shrink-0">
           <button
+            type="button"
             onClick={() => setSelectedPlaylist(null)}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-              background: 'none',
-              border: 'none',
-              color: 'var(--text-secondary)',
-              cursor: 'pointer',
-              fontSize: 12,
-              marginBottom: 16,
-              padding: 0,
-            }}
+            className="flex items-center gap-gutter-xs text-muted hover:text-dark-on-surface text-body-sm mb-gutter-md transition-colors"
           >
-            <ArrowLeft size={14} />
+            <ArrowLeft size={16} />
             <span>Назад к рекомендациям</span>
           </button>
 
-          <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
-              <div
-                style={{
-                  width: 96,
-                  height: 96,
-                  borderRadius: 12,
-                  overflow: 'hidden',
-                  backgroundColor: '#111111',
-                  border: '1px solid rgba(255, 255, 255, 0.1)',
-                  flexShrink: 0,
-                  boxShadow: '0 8px 24px rgba(0,0,0,0.6)',
-                }}
-              >
-                {selectedPlaylist.cover_uri ? (
-                  <img
-                    src={formatCoverUrl(selectedPlaylist.cover_uri, '200x200')}
-                    alt=""
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                  />
-                ) : (
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
-                    <Sparkles size={36} color="#a3021a" />
-                  </div>
-                )}
-              </div>
+          <div className="flex items-center gap-gutter-lg">
+            <div className="w-24 h-24 rounded-lg overflow-hidden bg-dark-surface-container border border-dark-outline-variant shrink-0 shadow-lg">
+              {selectedPlaylist.cover_uri ? (
+                <img
+                  src={formatCoverUrl(selectedPlaylist.cover_uri, '200x200')}
+                  alt={selectedPlaylist.title}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-accent">
+                  <Sparkles size={36} />
+                </div>
+              )}
+            </div>
 
-              <div>
-                <div
-                  style={{
-                    fontSize: 11,
-                    fontWeight: 700,
-                    color: '#a3021a',
-                    letterSpacing: '0.04em',
-                  }}
-                >
-                  {selectedPlaylist.header || 'Персональный микс'}
-                </div>
-                <h1 style={{ fontSize: 26, fontWeight: 800, color: '#ffffff', marginTop: 4, letterSpacing: '-0.02em' }}>
-                  {selectedPlaylist.title}
-                </h1>
-                <div
-                  style={{
-                    fontSize: 12,
-                    color: '#888888',
-                    marginTop: 6,
-                    maxWidth: 600,
-                  }}
-                >
-                  {selectedPlaylist.description || `${selectedPlaylist.track_count} треков, собранных алгоритмами`}
-                </div>
-              </div>
+            <div className="flex-1 min-w-0">
+              <span className="font-label text-label-sm text-accent uppercase tracking-wider">
+                {selectedPlaylist.header || 'Персональный микс'}
+              </span>
+              <h1 className="font-headline text-headline-md text-dark-on-surface truncate mt-0.5">
+                {selectedPlaylist.title}
+              </h1>
+              <p className="font-body text-body-sm text-muted truncate mt-1">
+                {selectedPlaylist.description || `${selectedPlaylist.track_count} треков`}
+              </p>
             </div>
 
             {playlistTracks.length > 0 && !loadingTracks && (
               <button
+                type="button"
                 onClick={() => setQueue(playlistTracks, 0)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  padding: '10px 22px',
-                  backgroundColor: '#ffffff',
-                  color: '#000000',
-                  border: 'none',
-                  borderRadius: 10,
-                  fontWeight: 700,
-                  fontSize: 12,
-                  cursor: 'pointer',
-                  boxShadow: '0 4px 14px rgba(255, 255, 255, 0.2)',
-                  transition: 'opacity 0.15s',
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.9')}
-                onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
+                className="shrink-0 w-11 h-11 rounded-full bg-dark-on-surface text-dark-surface flex items-center justify-center shadow-lg active:scale-95 transition-transform"
+                title="Слушать плейлист"
               >
-                <Play size={15} fill="#000000" color="#000000" />
-                <span>Слушать плейлист</span>
+                <Play size={20} fill="currentColor" className="ml-0.5" />
               </button>
             )}
           </div>
         </div>
 
         {/* Tracks List */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: isMobile ? '12px 12px 140px' : '16px 36px 80px' }}>
+        <div className="flex-1 overflow-y-auto no-scrollbar p-gutter-md pb-44">
           {loadingTracks ? (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 260, gap: 12 }}>
-              <Loader2 size={24} className="animate-spin" color="#ffffff" />
-              <span style={{ fontSize: 12, fontFamily: 'var(--font-mono)', color: '#888888' }}>
-                ЗАГРУЗКА ТРЕКОВ...
-              </span>
+            <div className="flex items-center justify-center h-48 gap-gutter-sm text-muted font-mono text-label-md">
+              <Loader2 size={24} className="animate-spin text-accent" />
+              <span>ЗАГРУЗКА ТРЕКОВ...</span>
             </div>
           ) : playlistTracks.length === 0 ? (
-            <div style={{ color: '#666666', textAlign: 'center', padding: '60px 0', fontFamily: 'var(--font-mono)' }}>
+            <div className="text-center text-muted py-16 font-mono text-body-sm">
               В этом плейлисте пока нет треков.
             </div>
           ) : (
-            playlistTracks.map((track, idx) => (
-              <TrackItemRow
-                key={`${track.id}-${idx}`}
-                track={track}
-                index={idx}
-                tracks={playlistTracks}
-              />
-            ))
+            <div className="flex flex-col gap-gutter-xs">
+              {playlistTracks.map((track, idx) => (
+                <TrackItemRow
+                  key={`${track.id}-${idx}`}
+                  track={track}
+                  index={idx}
+                  tracks={playlistTracks}
+                />
+              ))}
+            </div>
           )}
         </div>
       </div>
@@ -220,79 +187,393 @@ export function LandingPage() {
   // 2. Loading State
   if (loading && !data) {
     return (
-      <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
-        <Loader2 size={28} className="animate-spin" color="#ffffff" />
-        <span style={{ fontSize: 12, fontFamily: 'var(--font-mono)', color: '#888888', letterSpacing: '0.06em' }}>
-          СИНХРОНИЗАЦИЯ РЕКОМЕНДАЦИЙ ЯНДЕКС МУЗЫКИ...
-        </span>
+      <div className="h-full flex items-center justify-center gap-gutter-md text-muted font-mono text-label-md bg-dark-surface">
+        <Loader2 size={28} className="animate-spin text-accent" />
+        <span className="tracking-wider">СИНХРОНИЗАЦИЯ РЕКОМЕНДАЦИЙ...</span>
       </div>
     );
   }
 
   const personalPlaylists = data?.personal_playlists || [];
   const chartTracks = data?.chart_tracks || [];
-  const newReleases = data?.new_releases || [];
 
+  // Find specific playlists for the Bento grid
+  const premierePlaylist =
+    personalPlaylists.find(
+      (p) =>
+        p.title.toLowerCase().includes('премьера') ||
+        p.header?.toLowerCase().includes('премьера')
+    ) || personalPlaylists[0];
+
+  const dejavuPlaylist =
+    personalPlaylists.find(
+      (p) =>
+        p.title.toLowerCase().includes('дежавю') ||
+        p.header?.toLowerCase().includes('дежавю')
+    ) || personalPlaylists[1];
+
+  const dailyMixPlaylist =
+    personalPlaylists.find(
+      (p) =>
+        p.title.toLowerCase().includes('дня') ||
+        p.title.toLowerCase().includes('микс') ||
+        p.header?.toLowerCase().includes('дня')
+    ) || personalPlaylists[2];
+
+  // ==========================================
+  // MOBILE VIEW: 01-home-flow.html
+  // ==========================================
+  if (isMobile) {
+    return (
+      <div className="min-h-full w-full max-w-md mx-auto flex flex-col relative pb-44 bg-dark-surface text-dark-on-surface antialiased select-none overflow-y-auto no-scrollbar">
+        {/* Minimal Airy Top Bar: Brand + Quick Search + Settings */}
+        <header className="sticky top-0 z-20 bg-dark-surface/95 backdrop-blur-md px-page-margin pt-[calc(10px+var(--sat,0px))] pb-gutter-md flex items-center justify-between gap-gutter-md border-b border-dark-outline-variant/30 shrink-0">
+          <div className="flex items-center gap-gutter-sm shrink-0">
+            <span className="w-2.5 h-2.5 rounded-full bg-accent shadow-[0_0_8px_rgba(255,59,92,0.8)]" />
+            <span className="font-display text-title-lg text-dark-on-surface tracking-tight">YM</span>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => onSelectTab?.('search')}
+            aria-label="Быстрый поиск музыки"
+            className="flex-1 flex items-center gap-gutter-sm px-gutter-lg py-gutter-sm rounded-full bg-dark-surface-container-low border border-dark-outline-variant text-muted hover:text-dark-on-surface transition-colors duration-state-change"
+          >
+            <Search size={16} />
+            <span className="font-body text-body-sm truncate">Треки, артисты, настроение</span>
+          </button>
+
+          <div className="flex items-center gap-gutter-xs shrink-0">
+            <button
+              type="button"
+              onClick={() => setWaveSettingsOpen(true)}
+              aria-label="Настройки Волны"
+              title="Настройки Волны"
+              className="w-9 h-9 rounded-full bg-dark-surface-container-high border border-dark-outline-variant flex items-center justify-center text-dark-on-surface active:scale-95 transition-transform duration-state-change"
+            >
+              <SlidersHorizontal size={16} />
+            </button>
+            <button
+              type="button"
+              onClick={() => setSettingsOpen(true)}
+              aria-label="Настройки приложения"
+              title="Настройки"
+              className="w-9 h-9 rounded-full bg-dark-surface-container-high border border-dark-outline-variant flex items-center justify-center text-dark-on-surface active:scale-95 transition-transform duration-state-change"
+            >
+              <Settings size={16} />
+            </button>
+          </div>
+        </header>
+
+        {/* Main Flow Content */}
+        <main className="flex-1 flex flex-col gap-section px-page-margin pt-gutter-xs">
+          {/* 1. Open Dynamic Wave Stage (Acoustic Orb) */}
+          <section aria-label="Живая Волна" className="relative flex flex-col items-center text-center gap-gutter-lg pt-gutter-sm">
+            {/* Ambient Glow */}
+            <div className="pointer-events-none absolute top-0 left-1/2 -translate-x-1/2 w-64 h-64 rounded-full bg-accent opacity-15 blur-3xl" />
+
+            {/* Visual Acoustic Orb */}
+            <div className="relative w-44 h-44 rounded-full overflow-hidden border border-dark-outline-variant shadow-2xl bg-gradient-to-tr from-dark-surface-container-lowest via-accent/30 to-dark-surface-container-high group">
+              {/* Radial Animated Waves Background */}
+              <div
+                className={`w-full h-full object-cover transition-transform duration-700 ${
+                  waveMode && isPlaying ? 'scale-110 animate-spin [animation-duration:12s]' : ''
+                }`}
+                style={{
+                  background:
+                    'radial-gradient(circle at 35% 35%, #ff3b5c 0%, #BA0035 35%, #181B24 75%, #0B0E17 100%)',
+                }}
+              />
+              <div className="absolute inset-0 flex items-center justify-center bg-dark-surface/30 backdrop-blur-[2px]">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (waveMode && isPlaying) {
+                      togglePlay();
+                    } else if (waveMode) {
+                      togglePlay();
+                    } else {
+                      startWave();
+                    }
+                  }}
+                  aria-label="Запустить Мою Волну"
+                  className="w-16 h-16 rounded-full bg-dark-on-surface text-dark-surface flex items-center justify-center shadow-xl hover:scale-105 active:scale-95 transition-transform duration-state-change"
+                >
+                  {waveMode && isPlaying ? (
+                    <Pause size={28} fill="currentColor" />
+                  ) : (
+                    <Play size={28} fill="currentColor" className="ml-1" />
+                  )}
+                </button>
+              </div>
+            </div>
+
+            <div className="flex flex-col items-center gap-gutter-xs">
+              <h1 className="font-display text-display-lg-mobile text-dark-on-surface text-balance">
+                Моя Волна
+              </h1>
+              <p className="font-body text-body-sm text-muted text-pretty max-w-xs">
+                Живой поток музыки под ваш текущий ритм
+              </p>
+            </div>
+
+            {/* Swipeable Mood Chips */}
+            <div className="w-full overflow-x-auto no-scrollbar -mx-page-margin px-page-margin">
+              <div className="inline-flex items-center gap-gutter-sm" role="group" aria-label="Настроение потока">
+                {MOOD_CHIPS.map((chip) => {
+                  const isPressed = Boolean(
+                    waveMode &&
+                      waveSettings &&
+                      ((chip.opt.mood && waveSettings.mood === chip.opt.mood) ||
+                        (chip.opt.activity && waveSettings.activity === chip.opt.activity) ||
+                        (chip.opt.character && waveSettings.character === chip.opt.character))
+                  );
+
+                  return (
+                    <button
+                      key={chip.label}
+                      type="button"
+                      aria-pressed={isPressed}
+                      onClick={() => {
+                        if (isPressed) {
+                          startWave();
+                        } else {
+                          startCustomWave(chip.opt);
+                        }
+                      }}
+                      className={`inline-flex items-center px-gutter-lg py-gutter-sm rounded-full border shrink-0 transition-colors duration-state-change ${
+                        isPressed
+                          ? 'bg-accent/15 text-dark-primary border-accent font-semibold shadow-sm'
+                          : 'bg-dark-surface-container-low text-dark-on-surface border-dark-outline-variant hover:border-dark-on-surface/40'
+                      }`}
+                    >
+                      <span className="font-label text-label-md">{chip.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </section>
+
+          {/* 2. Asymmetric Bento Mixes ("Собрано для вас") */}
+          <section className="flex flex-col gap-gutter-md" aria-labelledby="bento-mixes-title">
+            <div className="flex items-baseline justify-between">
+              <h2 id="bento-mixes-title" className="font-headline text-headline-md text-dark-on-surface">
+                Собрано для вас
+              </h2>
+              <span className="font-label text-label-sm text-muted">Сегодня</span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-gutter-md items-stretch">
+              {/* Tall Feature Card: Премьера */}
+              {premierePlaylist ? (
+                <article
+                  onClick={() => handleSelectPlaylist(premierePlaylist)}
+                  className="rounded-xl bg-dark-surface-container-low p-gutter-md flex flex-col justify-between gap-gutter-md border border-dark-outline-variant cursor-pointer active:scale-[0.98] transition-transform duration-state-change"
+                >
+                  <div className="relative w-full aspect-square rounded-lg overflow-hidden bg-dark-surface-container shadow-sm">
+                    {premierePlaylist.cover_uri ? (
+                      <img
+                        src={formatCoverUrl(premierePlaylist.cover_uri, '400x400')}
+                        alt={premierePlaylist.title}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-accent">
+                        <Sparkles size={36} />
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex items-end justify-between gap-gutter-sm">
+                    <div className="flex flex-col gap-gutter-xs min-w-0">
+                      <span className="font-label text-label-sm text-accent">Новинки</span>
+                      <h3 className="font-headline text-title-lg text-dark-on-surface truncate">
+                        {premierePlaylist.title}
+                      </h3>
+                      <span className="font-mono text-mono-sm text-muted tabular-nums">
+                        {premierePlaylist.track_count || 20} треков
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={(e) => handleQuickPlayPlaylist(e, premierePlaylist)}
+                      aria-label="Слушать Премьеру"
+                      className="shrink-0 w-9 h-9 rounded-full bg-dark-on-surface text-dark-surface flex items-center justify-center active:scale-95 transition-transform duration-state-change shadow-md"
+                    >
+                      <Play size={16} fill="currentColor" className="ml-0.5" />
+                    </button>
+                  </div>
+                </article>
+              ) : null}
+
+              {/* Stacked Right Column: Дежавю + Микс дня */}
+              <div className="flex flex-col gap-gutter-md">
+                {dejavuPlaylist && (
+                  <article
+                    onClick={() => handleSelectPlaylist(dejavuPlaylist)}
+                    className="flex-1 rounded-xl bg-dark-surface-container-low p-gutter-md flex items-center gap-gutter-md border border-dark-outline-variant cursor-pointer active:scale-[0.98] transition-transform duration-state-change"
+                  >
+                    {dejavuPlaylist.cover_uri ? (
+                      <img
+                        src={formatCoverUrl(dejavuPlaylist.cover_uri, '200x200')}
+                        alt={dejavuPlaylist.title}
+                        className="w-14 h-14 rounded-lg object-cover shrink-0 bg-dark-surface-container shadow-sm"
+                      />
+                    ) : (
+                      <div className="w-14 h-14 rounded-lg bg-dark-surface-container flex items-center justify-center shrink-0 text-accent">
+                        <Sparkles size={24} />
+                      </div>
+                    )}
+                    <div className="flex flex-col min-w-0">
+                      <h3 className="font-headline text-title-md text-dark-on-surface truncate">
+                        {dejavuPlaylist.title}
+                      </h3>
+                      <span className="font-mono text-label-sm text-muted tabular-nums">
+                        {dejavuPlaylist.track_count || 30} треков
+                      </span>
+                    </div>
+                  </article>
+                )}
+
+                {dailyMixPlaylist && (
+                  <article
+                    onClick={() => handleSelectPlaylist(dailyMixPlaylist)}
+                    className="flex-1 rounded-xl bg-dark-surface-container-low p-gutter-md flex items-center gap-gutter-md border border-dark-outline-variant cursor-pointer active:scale-[0.98] transition-transform duration-state-change"
+                  >
+                    {dailyMixPlaylist.cover_uri ? (
+                      <img
+                        src={formatCoverUrl(dailyMixPlaylist.cover_uri, '200x200')}
+                        alt={dailyMixPlaylist.title}
+                        className="w-14 h-14 rounded-lg object-cover shrink-0 bg-dark-surface-container shadow-sm"
+                      />
+                    ) : (
+                      <div className="w-14 h-14 rounded-lg bg-dark-surface-container flex items-center justify-center shrink-0 text-accent">
+                        <Sparkles size={24} />
+                      </div>
+                    )}
+                    <div className="flex flex-col min-w-0">
+                      <h3 className="font-headline text-title-md text-dark-on-surface truncate">
+                        {dailyMixPlaylist.title}
+                      </h3>
+                      <span className="font-label text-label-sm text-accent">Обновлён</span>
+                    </div>
+                  </article>
+                )}
+              </div>
+            </div>
+          </section>
+
+          {/* 3. Live Chart Strip (Топ-100) */}
+          <section className="flex flex-col gap-gutter-md" aria-labelledby="chart-strip-title">
+            <div className="flex items-baseline justify-between">
+              <h2 id="chart-strip-title" className="font-headline text-headline-md text-dark-on-surface">
+                Чарт Топ-100
+              </h2>
+              <span className="font-label text-label-md text-accent">Топ треки</span>
+            </div>
+
+            <div className="flex flex-col gap-gutter-xs">
+              {chartTracks.slice(0, 10).map((item, index) => {
+                const track = item.track;
+                const position = item.position || index + 1;
+                const shift = item.shift ?? 0;
+                const cover = track.cover_uri
+                  ? formatCoverUrl(track.cover_uri, '100x100')
+                  : null;
+
+                return (
+                  <div
+                    key={`${track.id}-${index}`}
+                    onClick={() => handlePlayChartTrack(track, index)}
+                    className="flex items-center justify-between gap-gutter-md p-gutter-sm rounded-lg bg-dark-surface-container-low hover:bg-dark-surface-container cursor-pointer transition-colors"
+                  >
+                    <div className="flex items-center gap-gutter-md min-w-0">
+                      <span
+                        className={`font-mono text-title-md w-5 text-center tabular-nums shrink-0 ${
+                          position === 1 ? 'text-accent font-bold' : 'text-muted'
+                        }`}
+                      >
+                        {position}
+                      </span>
+
+                      {cover ? (
+                        <img
+                          src={cover}
+                          alt={track.title}
+                          className="w-11 h-11 rounded-md object-cover shrink-0 bg-dark-surface-container"
+                        />
+                      ) : (
+                        <div className="w-11 h-11 rounded-md bg-dark-surface-container flex items-center justify-center shrink-0 text-muted">
+                          <Disc size={18} />
+                        </div>
+                      )}
+
+                      <div className="flex flex-col min-w-0">
+                        <span className="font-title text-title-md text-dark-on-surface truncate">
+                          {track.title}
+                        </span>
+                        <span className="font-body text-body-sm text-muted truncate">
+                          {track.artists.join(', ')}
+                        </span>
+                      </div>
+                    </div>
+
+                    <span
+                      className={`font-mono text-label-sm tabular-nums shrink-0 ${
+                        shift > 0
+                          ? 'text-dark-tertiary'
+                          : shift < 0
+                          ? 'text-dark-error'
+                          : 'text-muted'
+                      }`}
+                    >
+                      {shift > 0 ? `↑ +${shift}` : shift < 0 ? `↓ ${shift}` : '—'}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        </main>
+      </div>
+    );
+  }
+
+  // ==========================================
+  // DESKTOP VIEW
+  // ==========================================
   return (
-    <div
-      style={{
-        height: '100%',
-        overflowY: 'auto',
-        backgroundColor: '#050505',
-        padding: isMobile ? '16px 14px 140px' : '32px 40px 90px',
-      }}
-    >
+    <div className="h-full overflow-y-auto bg-dark-surface text-dark-on-surface p-8 pb-28 no-scrollbar">
       {/* Top Header */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
-          paddingBottom: 20,
-          marginBottom: 32,
-        }}
-      >
+      <div className="flex items-center justify-between border-b border-dark-outline-variant pb-5 mb-8">
         <div>
-          <h1 style={{ fontSize: 26, fontWeight: 800, color: '#ffffff', letterSpacing: '-0.02em', margin: 0 }}>
+          <h1 className="font-display text-2xl font-bold tracking-tight text-dark-on-surface">
             Главная
           </h1>
-          <p style={{ fontSize: 13, color: '#888888', marginTop: 4, margin: '4px 0 0' }}>
-            Рекомендации, Моя Волна и тренды
-          </p>
+          <p className="text-body-sm text-muted mt-1">Рекомендации, Моя Волна и тренды</p>
         </div>
 
         {/* View Switcher: Главное / Чарт */}
-        <div style={{ display: 'flex', gap: 3, backgroundColor: 'rgba(255, 255, 255, 0.05)', padding: 3, borderRadius: 8 }}>
+        <div className="flex gap-1 bg-dark-surface-container-low p-1 rounded-lg border border-dark-outline-variant">
           <button
+            type="button"
             onClick={() => setViewMode('overview')}
-            style={{
-              padding: '6px 16px',
-              backgroundColor: viewMode === 'overview' ? '#ffffff' : 'transparent',
-              color: viewMode === 'overview' ? '#000000' : '#888888',
-              border: 'none',
-              borderRadius: 6,
-              fontSize: 12,
-              fontWeight: viewMode === 'overview' ? 700 : 500,
-              cursor: 'pointer',
-              transition: 'all 0.12s ease',
-            }}
+            className={`px-4 py-1.5 rounded-md text-label-sm font-semibold transition-colors ${
+              viewMode === 'overview'
+                ? 'bg-dark-on-surface text-dark-surface'
+                : 'text-muted hover:text-dark-on-surface'
+            }`}
           >
             Главное
           </button>
           <button
+            type="button"
             onClick={() => setViewMode('chart')}
-            style={{
-              padding: '6px 16px',
-              backgroundColor: viewMode === 'chart' ? '#ffffff' : 'transparent',
-              color: viewMode === 'chart' ? '#000000' : '#888888',
-              border: 'none',
-              borderRadius: 6,
-              fontSize: 12,
-              fontWeight: viewMode === 'chart' ? 700 : 500,
-              cursor: 'pointer',
-              transition: 'all 0.12s ease',
-            }}
+            className={`px-4 py-1.5 rounded-md text-label-sm font-semibold transition-colors ${
+              viewMode === 'chart'
+                ? 'bg-dark-on-surface text-dark-surface'
+                : 'text-muted hover:text-dark-on-surface'
+            }`}
           >
             Чарт Топ-100
           </button>
@@ -301,91 +582,51 @@ export function LandingPage() {
 
       {viewMode === 'overview' ? (
         <>
-          {/* HERO: Моя Волна (1-Click Station) */}
-          <section
-            style={{
-              marginBottom: isMobile ? 24 : 36,
-              background: 'linear-gradient(135deg, rgba(163, 2, 26, 0.16) 0%, rgba(120, 1, 18, 0.08) 50%, rgba(18, 18, 18, 0.6) 100%)',
-              border: '1px solid rgba(163, 2, 26, 0.3)',
-              borderRadius: 16,
-              padding: isMobile ? '16px' : '24px 28px',
-              display: 'flex',
-              flexDirection: isMobile ? 'column' : 'row',
-              alignItems: isMobile ? 'stretch' : 'center',
-              justifyContent: 'space-between',
-              gap: isMobile ? 16 : 20,
-              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
-              position: 'relative',
-              overflow: 'hidden',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
-              <div
-                style={{
-                  width: 56,
-                  height: 56,
-                  borderRadius: '50%',
-                  backgroundColor: '#a3021a',
-                  color: '#ffffff',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  boxShadow: '0 4px 20px rgba(163, 2, 26, 0.45)',
-                  flexShrink: 0,
-                  cursor: 'pointer',
-                }}
+          {/* HERO: Моя Волна */}
+          <section className="mb-9 p-6 rounded-2xl bg-gradient-to-r from-dark-surface-container via-dark-surface-container-low to-dark-surface border border-dark-outline-variant flex items-center justify-between gap-6 shadow-xl relative overflow-hidden">
+            <div className="flex items-center gap-5">
+              <button
+                type="button"
                 onClick={() => startWave()}
+                className="w-14 h-14 rounded-full bg-accent text-light-on-primary flex items-center justify-center shadow-lg active:scale-95 transition-transform shrink-0"
                 title="Включить Мою Волну"
               >
                 <Radio size={28} />
-              </div>
+              </button>
 
               <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                  <h2 style={{ fontSize: 20, fontWeight: 800, color: '#ffffff', margin: 0 }}>
-                    Моя Волна
-                  </h2>
+                <div className="flex items-center gap-2 mb-1">
+                  <h2 className="font-display text-title-lg text-dark-on-surface">Моя Волна</h2>
                   {waveMode && isPlaying && (
-                    <span style={{ fontSize: 11, fontWeight: 700, color: '#ffffff', backgroundColor: '#a3021a', padding: '2px 8px', borderRadius: 10 }}>
+                    <span className="text-label-sm font-bold bg-accent text-light-on-primary px-2 py-0.5 rounded-full">
                       Сейчас играет
                     </span>
                   )}
                 </div>
-                <p style={{ fontSize: 13, color: '#aaaaaa', margin: '0 0 12px 0', maxWidth: 440 }}>
+                <p className="text-body-sm text-muted max-w-lg mb-3">
                   Бесконечный поток музыки, который подстраивается под ваши вкусы и настроение.
                 </p>
 
-                {/* Quick Mood & Activity Filter Chips */}
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                  {[
-                    { label: 'Бодрое', opt: { mood: 'active' } },
-                    { label: 'Спокойное', opt: { mood: 'calm' } },
-                    { label: 'Любимое', opt: { character: 'favorite' } },
-                    { label: 'Незнакомое', opt: { character: 'discover' } },
-                    { label: 'Работа', opt: { activity: 'work-background' } },
-                  ].map((chip) => {
+                {/* Mood Chips */}
+                <div className="flex flex-wrap gap-2">
+                  {MOOD_CHIPS.map((chip) => {
                     const isActive = Boolean(
                       waveMode &&
                         waveSettings &&
                         ((chip.opt.mood && waveSettings.mood === chip.opt.mood) ||
-                          (chip.opt.character && waveSettings.character === chip.opt.character) ||
-                          (chip.opt.activity && waveSettings.activity === chip.opt.activity))
+                          (chip.opt.activity && waveSettings.activity === chip.opt.activity) ||
+                          (chip.opt.character && waveSettings.character === chip.opt.character))
                     );
                     return (
                       <button
                         key={chip.label}
+                        type="button"
                         onClick={() => startCustomWave(chip.opt)}
-                        style={{
-                          padding: '5px 12px',
-                          borderRadius: 14,
-                          border: isActive ? '1px solid #ffffff' : '1px solid rgba(255, 255, 255, 0.12)',
-                          backgroundColor: isActive ? '#ffffff' : 'rgba(255, 255, 255, 0.06)',
-                          color: isActive ? '#000000' : '#dddddd',
-                          fontSize: 11,
-                          fontWeight: isActive ? 700 : 600,
-                          cursor: 'pointer',
-                          transition: 'all 0.12s ease',
-                        }}
+                        className={`px-3 py-1 rounded-full text-label-sm transition-colors border ${
+                          isActive
+                            ? 'bg-accent/15 text-dark-primary border-accent font-semibold'
+                            : 'bg-dark-surface-container-high border-dark-outline-variant text-muted hover:text-dark-on-surface'
+                        }`}
                       >
                         {chip.label}
                       </button>
@@ -394,426 +635,76 @@ export function LandingPage() {
                 </div>
               </div>
             </div>
+          </section>
 
-            {/* Right Buttons: Play / Settings */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <button
-                onClick={() => setWaveSettingsOpen(true)}
-                style={{
-                  padding: '10px 16px',
-                  borderRadius: 10,
-                  border: '1px solid rgba(255, 255, 255, 0.15)',
-                  backgroundColor: 'rgba(255, 255, 255, 0.08)',
-                  color: '#ffffff',
-                  fontSize: 12,
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 6,
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.14)')}
-                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.08)')}
-              >
-                <Sliders size={14} />
-                <span>Настроить</span>
-              </button>
-
-              <button
-                onClick={() => startWave()}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  padding: '10px 22px',
-                  borderRadius: 10,
-                  backgroundColor: '#ffffff',
-                  color: '#000000',
-                  border: 'none',
-                  fontSize: 13,
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  boxShadow: '0 4px 14px rgba(255, 255, 255, 0.25)',
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.9')}
-                onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
-              >
-                <Play size={16} fill="#000000" />
-                <span>Слушать волну</span>
-              </button>
+          {/* Personal Playlists Grid */}
+          <section className="mb-10">
+            <h2 className="font-headline text-headline-md text-dark-on-surface mb-4">
+              Собрано для вас
+            </h2>
+            <div className="grid grid-cols-4 gap-4">
+              {personalPlaylists.map((pl) => (
+                <div
+                  key={pl.kind}
+                  onClick={() => handleSelectPlaylist(pl)}
+                  className="p-3.5 rounded-xl bg-dark-surface-container-low border border-dark-outline-variant hover:bg-dark-surface-container cursor-pointer transition-all group"
+                >
+                  <div className="w-full aspect-square rounded-lg overflow-hidden bg-dark-surface-container mb-3 relative">
+                    {pl.cover_uri ? (
+                      <img
+                        src={formatCoverUrl(pl.cover_uri, '400x400')}
+                        alt={pl.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-accent">
+                        <Sparkles size={32} />
+                      </div>
+                    )}
+                  </div>
+                  <h3 className="font-headline text-title-md text-dark-on-surface truncate">
+                    {pl.title}
+                  </h3>
+                  <p className="font-mono text-label-sm text-muted mt-1">
+                    {pl.track_count} треков
+                  </p>
+                </div>
+              ))}
             </div>
           </section>
-          {/* SECTION 1: Персональные плейлисты Яндекса */}
-          {personalPlaylists.length > 0 && (
-            <section style={{ marginBottom: 44 }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <Sparkles size={16} color="#a3021a" />
-                  <h2 style={{ fontSize: 16, fontWeight: 800, color: '#ffffff', letterSpacing: '-0.01em' }}>
-                    Персональные подборки
-                  </h2>
-                </div>
-                <span style={{ fontSize: 11, color: '#666666' }}>
-                  Обновляются ежедневно
-                </span>
-              </div>
-
-              {/* Grid of 4 Personal Mixes */}
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(auto-fill, minmax(240px, 1fr))',
-                  gap: isMobile ? 10 : 16,
-                }}
-              >
-                {personalPlaylists.map((playlist) => (
-                  <div
-                    key={playlist.kind}
-                    onClick={() => handleSelectPlaylist(playlist)}
-                    style={{
-                      backgroundColor: 'rgba(255, 255, 255, 0.03)',
-                      border: '1px solid rgba(255, 255, 255, 0.06)',
-                      borderRadius: 12,
-                      padding: 18,
-                      cursor: 'pointer',
-                      transition: 'all 0.15s ease',
-                      position: 'relative',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      justifyContent: 'space-between',
-                      height: 190,
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.borderColor = 'rgba(163, 2, 26, 0.4)';
-                      e.currentTarget.style.transform = 'translateY(-2px)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.06)';
-                      e.currentTarget.style.transform = 'translateY(0)';
-                    }}
-                  >
-                    <div>
-                      <div
-                        style={{
-                          fontSize: 10,
-                          fontWeight: 700,
-                          color: '#a3021a',
-                          letterSpacing: '0.04em',
-                        }}
-                      >
-                        {playlist.header || 'Персонально'}
-                      </div>
-                      <h3 style={{ fontSize: 18, fontWeight: 900, color: '#ffffff', marginTop: 6, lineHeight: 1.2 }}>
-                        {playlist.title}
-                      </h3>
-                      <p
-                        style={{
-                          fontSize: 11,
-                          color: '#777777',
-                          marginTop: 6,
-                          lineHeight: 1.4,
-                          display: '-webkit-box',
-                          WebkitLineClamp: 2,
-                          WebkitBoxOrient: 'vertical',
-                          overflow: 'hidden',
-                        }}
-                      >
-                        {playlist.description || 'Треки, подобранные на основе ваших предпочтений.'}
-                      </p>
-                    </div>
-
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 14 }}>
-                      <span style={{ fontSize: 10, fontFamily: 'var(--font-mono)', color: '#555555' }}>
-                        {playlist.track_count} ТРЕКОВ
-                      </span>
-
-                      <button
-                        onClick={(e) => handleQuickPlayPlaylist(e, playlist)}
-                        style={{
-                          width: 36,
-                          height: 36,
-                          borderRadius: '50%',
-                          backgroundColor: '#ffffff',
-                          color: '#000000',
-                          border: 'none',
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          boxShadow: '0 4px 12px rgba(255,255,255,0.2)',
-                          transition: 'transform 0.12s ease',
-                        }}
-                        onMouseEnter={(e) => (e.currentTarget.style.transform = 'scale(1.08)')}
-                        onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
-                        title="Воспроизвести прямо сейчас"
-                      >
-                        <Play size={14} fill="#000000" color="#000000" style={{ marginLeft: 2 }} />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
-
-          {/* SECTION 2: Топ-5 из Чарта (Превью с кнопкой перехода в полный чарт) */}
-          {chartTracks.length > 0 && (
-            <section style={{ marginBottom: 44 }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <Flame size={16} color="#a3021a" />
-                  <h2 style={{ fontSize: 16, fontWeight: 800, color: '#ffffff', letterSpacing: '-0.01em' }}>
-                    Чарт Топ-10
-                  </h2>
-                </div>
-
-                <button
-                  onClick={() => setViewMode('chart')}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    color: '#888888',
-                    cursor: 'pointer',
-                    fontSize: 12,
-                    fontWeight: 600,
-                  }}
-                  onMouseEnter={(e) => (e.currentTarget.style.color = '#ffffff')}
-                  onMouseLeave={(e) => (e.currentTarget.style.color = '#888888')}
-                >
-                  Смотреть все 100 треков →
-                </button>
-              </div>
-
-              {/* Top Chart Tracks List (first 10) */}
-              <div style={{ backgroundColor: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.06)', borderRadius: 14, padding: '12px 16px' }}>
-                {chartTracks.slice(0, 10).map((item, idx) => (
-                  <ChartItemRow
-                    key={`${item.track.id}-${idx}`}
-                    chartItem={item}
-                    index={idx}
-                    allTracks={chartTracks.map((c) => c.track)}
-                  />
-                ))}
-              </div>
-            </section>
-          )}
-
-          {/* SECTION 3: Свежие релизы (Новые альбомы) */}
-          {newReleases.length > 0 && (
-            <section>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-                <TrendingUp size={16} color="#a3021a" />
-                <h2 style={{ fontSize: 16, fontWeight: 800, color: '#ffffff', letterSpacing: '-0.01em' }}>
-                  Новые релизы
-                </h2>
-              </div>
-
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(auto-fill, minmax(180px, 1fr))',
-                  gap: isMobile ? 10 : 16,
-                }}
-              >
-                {newReleases.slice(0, 12).map((album) => (
-                  <div
-                    key={album.id}
-                    style={{
-                      backgroundColor: 'rgba(255, 255, 255, 0.03)',
-                      border: '1px solid rgba(255, 255, 255, 0.06)',
-                      borderRadius: 12,
-                      padding: 14,
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: 10,
-                      transition: 'all 0.15s ease',
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.borderColor = 'rgba(163, 2, 26, 0.4)';
-                      e.currentTarget.style.transform = 'translateY(-2px)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.06)';
-                      e.currentTarget.style.transform = 'translateY(0)';
-                    }}
-                  >
-                    <div
-                      style={{
-                        width: '100%',
-                        aspectRatio: '1/1',
-                        borderRadius: 8,
-                        overflow: 'hidden',
-                        backgroundColor: '#161616',
-                      }}
-                    >
-                      {album.cover_uri ? (
-                        <img
-                          src={formatCoverUrl(album.cover_uri, '200x200')}
-                          alt=""
-                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                        />
-                      ) : (
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
-                          <Disc size={32} color="#444444" />
-                        </div>
-                      )}
-                    </div>
-
-                    <div>
-                      <h4
-                        style={{
-                          fontSize: 13,
-                          fontWeight: 800,
-                          color: '#ffffff',
-                          whiteSpace: 'nowrap',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                        }}
-                      >
-                        {album.title}
-                      </h4>
-                      <div
-                        style={{
-                          fontSize: 11,
-                          color: '#777777',
-                          whiteSpace: 'nowrap',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          marginTop: 2,
-                        }}
-                      >
-                        {album.artist_name || 'Артист'}
-                      </div>
-                      {album.year && (
-                        <div style={{ fontSize: 9, fontFamily: 'var(--font-mono)', color: '#555555', marginTop: 4 }}>
-                          {album.year}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
         </>
       ) : (
-        /* FULL 100 CHART VIEW */
-        <section>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-            <div>
-              <h2 style={{ fontSize: 20, fontWeight: 800, color: '#ffffff' }}>
-                Чарт Топ-100
-              </h2>
-              <span style={{ fontSize: 12, color: '#888888' }}>
-                Самые популярные треки прямо сейчас
-              </span>
+        /* Full Chart View */
+        <section className="flex flex-col gap-2">
+          {chartTracks.map((item, idx) => (
+            <div
+              key={`${item.track.id}-${idx}`}
+              onClick={() => handlePlayChartTrack(item.track, idx)}
+              className="flex items-center justify-between p-2.5 rounded-lg bg-dark-surface-container-low hover:bg-dark-surface-container cursor-pointer transition-colors"
+            >
+              <div className="flex items-center gap-4 min-w-0">
+                <span className="font-mono text-title-md w-6 text-center tabular-nums text-muted">
+                  {idx + 1}
+                </span>
+                <img
+                  src={formatCoverUrl(item.track.cover_uri, '100x100')}
+                  alt={item.track.title}
+                  className="w-11 h-11 rounded-md object-cover"
+                />
+                <div className="flex flex-col min-w-0">
+                  <span className="font-title text-title-md text-dark-on-surface truncate">
+                    {item.track.title}
+                  </span>
+                  <span className="font-body text-body-sm text-muted truncate">
+                    {item.track.artists.join(', ')}
+                  </span>
+                </div>
+              </div>
             </div>
-
-            {chartTracks.length > 0 && (
-              <button
-                onClick={() => setQueue(chartTracks.map((c) => c.track), 0)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  padding: '10px 22px',
-                  backgroundColor: '#ffffff',
-                  color: '#000000',
-                  border: 'none',
-                  borderRadius: 10,
-                  fontSize: 12,
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  boxShadow: '0 4px 14px rgba(255, 255, 255, 0.2)',
-                }}
-              >
-                <Play size={14} fill="#000000" color="#000000" />
-                <span>Слушать весь чарт</span>
-              </button>
-            )}
-          </div>
-
-          <div style={{ backgroundColor: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.06)', borderRadius: 14, padding: '12px 16px' }}>
-            {chartTracks.map((item, idx) => (
-              <ChartItemRow
-                key={`${item.track.id}-${idx}`}
-                chartItem={item}
-                index={idx}
-                allTracks={chartTracks.map((c) => c.track)}
-              />
-            ))}
-          </div>
+          ))}
         </section>
       )}
     </div>
   );
 }
-
-// Subcomponent: Row with Position badge (01, 02..), Shift indicator (▲, ▼, NEW), and Track controls
-function ChartItemRow({
-  chartItem,
-  index,
-  allTracks,
-}: {
-  chartItem: ChartTrack;
-  index: number;
-  allTracks: TrackItem[];
-}) {
-  const { track, position, progress, shift } = chartItem;
-  const isTop3 = position <= 3;
-
-  return (
-    <div
-      style={{
-        display: 'grid',
-        gridTemplateColumns: '46px 1fr',
-        alignItems: 'center',
-        borderBottom: '1px solid #111111',
-      }}
-    >
-      {/* Position Badge & Dynamics */}
-      <div
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          paddingRight: 6,
-        }}
-      >
-        <span
-          style={{
-            fontFamily: 'var(--font-mono)',
-            fontSize: isTop3 ? 15 : 12,
-            fontWeight: 900,
-            color: position === 1 ? '#ffffff' : position === 2 ? '#cccccc' : position === 3 ? '#999999' : '#555555',
-          }}
-        >
-          {String(position).padStart(2, '0')}
-        </span>
-
-        {/* Progress Shift: up / down / new / same */}
-        {progress === 'new' ? (
-          <span style={{ fontSize: 8, fontFamily: 'var(--font-mono)', color: '#2bf0ff', fontWeight: 800 }}>
-            NEW
-          </span>
-        ) : progress === 'up' ? (
-          <span style={{ fontSize: 9, fontFamily: 'var(--font-mono)', color: '#55ff55' }}>
-            ▲{shift ? Math.abs(shift) : ''}
-          </span>
-        ) : progress === 'down' ? (
-          <span style={{ fontSize: 9, fontFamily: 'var(--font-mono)', color: '#ff4444' }}>
-            ▼{shift ? Math.abs(shift) : ''}
-          </span>
-        ) : (
-          <span style={{ fontSize: 9, fontFamily: 'var(--font-mono)', color: '#444444' }}>
-            —
-          </span>
-        )}
-      </div>
-
-      {/* TrackItemRow handles Artwork, Title, Wave by track, Like, Duration */}
-      <TrackItemRow track={track} index={index} tracks={allTracks} />
-    </div>
-  );
-}
+export default LandingPage;

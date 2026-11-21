@@ -84,42 +84,32 @@ export function SearchPage({ query: propQuery, onQueryChange }: SearchPageProps)
   };
 
   return (
-    <div style={{
-      height: '100%',
-      display: 'flex',
-      flexDirection: 'column',
-      padding: isMobile ? '16px 14px 140px' : '36px 40px',
-      overflowY: 'auto',
-    }}>
+    <div
+      className="h-full flex flex-col bg-dark-surface text-dark-on-surface overflow-y-auto no-scrollbar"
+      style={{
+        padding: isMobile
+          ? 'calc(14px + var(--sat, 0px)) 16px 150px'
+          : '36px 40px',
+      }}
+    >
       {/* Header & Search Bar */}
       <div style={{ maxWidth: 640, marginBottom: isMobile ? 16 : 28, position: 'relative' }}>
-        {!isMobile && (
-          <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary)', letterSpacing: -0.5, marginBottom: 16 }}>
-            Поиск
-          </h1>
-        )}
+        <h1 className={`font-display font-bold text-dark-on-surface tracking-tight mb-3 ${isMobile ? 'text-xl' : 'text-2xl'}`}>
+          Поиск
+        </h1>
 
         <div style={{ position: 'relative' }}>
-          <SearchIcon size={16} color="var(--text-muted)" style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)' }} />
+          <SearchIcon size={16} className="text-muted" style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)' }} />
           <input
             type="text"
-            placeholder="Трек, исполнитель или альбом..."
+            placeholder="Треки, артисты, настроение..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
+            className="w-full bg-dark-surface-container-low border border-dark-outline-variant rounded-full text-dark-on-surface text-body-sm focus:border-accent focus:outline-none transition-colors"
             style={{
-              width: '100%',
-              backgroundColor: 'var(--bg-card)',
-              border: '1px solid var(--border-medium)',
-              borderRadius: 'var(--radius-md)',
-              color: 'var(--text-primary)',
-              fontSize: 13,
               padding: '11px 36px 11px 40px',
-              outline: 'none',
-              transition: 'border-color 0.15s',
             }}
-            onFocus={(e) => (e.target.style.borderColor = 'var(--border-high)')}
-            onBlur={(e) => (e.target.style.borderColor = 'var(--border-medium)')}
           />
           {loading && (
             <div style={{ position: 'absolute', right: query ? 34 : 14, top: '50%', transform: 'translateY(-50%)', display: 'flex' }}>

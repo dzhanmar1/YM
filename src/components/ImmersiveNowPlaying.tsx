@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   ChevronDown,
+  ChevronLeft,
   Play,
   Pause,
   SkipBack,
@@ -15,6 +16,9 @@ import {
   Mic2,
   Volume2,
   VolumeX,
+  Headphones,
+  Maximize2,
+  ListMusic,
 } from 'lucide-react';
 import { useWindowStore } from '../store/windowStore';
 import { usePlayerStore } from '../store/playerStore';
@@ -22,6 +26,7 @@ import { useLyricsStore } from '../store/lyricsStore';
 import { useEqualizerStore } from '../store/equalizerStore';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { AmbientBackgroundVisualizer } from './AmbientBackgroundVisualizer';
+import { LyricsModal } from './LyricsModal';
 import { formatCoverUrl, formatDuration } from '../types';
 import { invoke, isTauri } from '@tauri-apps/api/core';
 
@@ -50,12 +55,15 @@ export function ImmersiveNowPlaying() {
     setVolume,
     toggleMute,
     waveMode,
+    queue,
+    queueIndex,
+    playTrack,
   } = usePlayerStore();
 
   const { lyrics, activeLineIndex } = useLyricsStore();
   const { setModalOpen: setEqOpen } = useEqualizerStore();
 
-  const [mobileTab, setMobileTab] = useState<'player' | 'lyrics'>('player');
+  const [mobileTab, setMobileTab] = useState<'player' | 'lyrics' | 'queue'>('player');
 
   const activeLineRef = useRef<HTMLDivElement | null>(null);
   const lyricsContainerRef = useRef<HTMLDivElement | null>(null);
@@ -176,472 +184,435 @@ export function ImmersiveNowPlaying() {
       {/* Dynamic Ambient Background Visualizer */}
       <AmbientBackgroundVisualizer coverUrl={coverUrl} accentColor="#a3021a" opacity={0.65} />
 
-      {/* TOP HEADER */}
-      <div
-        onTouchStart={handleHeaderTouchStart}
-        onTouchEnd={handleHeaderTouchEnd}
-        style={{
-          height: isMobile ? 50 : 54,
-          padding: isMobile ? '0 16px' : '0 24px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          zIndex: 10,
-          flexShrink: 0,
-          borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
-          backdropFilter: 'blur(20px)',
-          backgroundColor: 'rgba(10, 10, 10, 0.4)',
-        }}
-      >
-        {/* Collapse Button */}
-        <button
-          onClick={() => setNowPlayingOpen(false)}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
-            padding: '7px 12px',
-            borderRadius: 8,
-            backgroundColor: 'rgba(255, 255, 255, 0.08)',
-            border: 'none',
-            color: '#ffffff',
-            fontSize: 13,
-            fontWeight: 600,
-            cursor: 'pointer',
-          }}
-        >
-          <ChevronDown size={18} />
-          <span>Свернуть</span>
-        </button>
+      {/* MOBILE NOW PLAYING: YM Aura v2 Immersive Player & Lyrics */}
+      {isMobile ? (
+        mobileTab === 'lyrics' ? (
+          <LyricsModal onBackToPlayer={() => setMobileTab('player')} />
+        ) : mobileTab === 'queue' ? (
+          <div className="h-full w-full max-w-md mx-auto flex flex-col justify-between relative overflow-hidden bg-dark-surface text-dark-on-surface antialiased select-none">
+            {/* Context Header */}
+            <header className="sticky top-0 z-20 bg-dark-surface/95 backdrop-blur-md px-page-margin pt-gutter-md pb-gutter-md flex items-center justify-between border-b border-dark-outline-variant/30 shrink-0">
+              <button
+                type="button"
+                onClick={() => setMobileTab('player')}
+                aria-label="Вернуться к плееру"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-dark-surface-container-low border border-dark-outline-variant text-body-sm text-dark-on-surface active:scale-95 transition-transform"
+              >
+                <ChevronLeft size={16} />
+                <span className="font-label text-label-sm">Плеер</span>
+              </button>
 
-        {/* Center Mode / Switcher for Mobile */}
-        {isMobile ? (
-          <div
-            style={{
-              display: 'flex',
-              backgroundColor: 'rgba(255, 255, 255, 0.08)',
-              borderRadius: 20,
-              padding: 2,
-            }}
-          >
-            <button
-              onClick={() => setMobileTab('player')}
-              style={{
-                padding: '4px 12px',
-                borderRadius: 16,
-                border: 'none',
-                backgroundColor: mobileTab === 'player' ? '#ffffff' : 'transparent',
-                color: mobileTab === 'player' ? '#000000' : 'rgba(255, 255, 255, 0.6)',
-                fontSize: 11,
-                fontWeight: 700,
-                cursor: 'pointer',
-              }}
-            >
-              Трек
-            </button>
-            <button
-              onClick={() => setMobileTab('lyrics')}
-              style={{
-                padding: '4px 12px',
-                borderRadius: 16,
-                border: 'none',
-                backgroundColor: mobileTab === 'lyrics' ? '#ffffff' : 'transparent',
-                color: mobileTab === 'lyrics' ? '#000000' : 'rgba(255, 255, 255, 0.6)',
-                fontSize: 11,
-                fontWeight: 700,
-                cursor: 'pointer',
-              }}
-            >
-              Текст
-            </button>
+              <div className="flex items-center gap-2">
+                <ListMusic size={16} className="text-accent" />
+                <h2 className="font-headline text-title-md text-dark-on-surface">
+                  Очередь ({queue.length})
+                </h2>
+              </div>
+
+              <div className="w-16" />
+            </header>
+
+            {/* Queue List */}
+            <div className="flex-1 overflow-y-auto no-scrollbar px-page-margin py-gutter-md flex flex-col gap-1.5">
+              {queue.length === 0 ? (
+                <div className="flex-1 flex flex-col items-center justify-center text-muted gap-2 py-24">
+                  <ListMusic size={40} className="text-muted/60" />
+                  <span className="font-body text-body-md">Очередь воспроизведения пуста</span>
+                </div>
+              ) : (
+                queue.map((track, idx) => {
+                  const isCurrent = idx === queueIndex;
+                  const trackCover = track.cover_uri ? formatCoverUrl(track.cover_uri, '100x100') : null;
+                  return (
+                    <div
+                      key={`${track.id}-${idx}`}
+                      onClick={() => playTrack(track, queue, idx)}
+                      className={`flex items-center justify-between gap-gutter-md p-gutter-sm rounded-xl cursor-pointer transition-colors ${
+                        isCurrent
+                          ? 'bg-dark-surface-container-high border border-accent/40 shadow-sm'
+                          : 'hover:bg-dark-surface-container-low active:bg-dark-surface-container'
+                      }`}
+                    >
+                      <div className="flex items-center gap-gutter-md min-w-0 flex-1">
+                        <span
+                          className={`font-mono text-label-sm w-5 text-center tabular-nums shrink-0 ${
+                            isCurrent ? 'text-accent font-bold' : 'text-muted'
+                          }`}
+                        >
+                          {idx + 1}
+                        </span>
+                        {trackCover ? (
+                          <img
+                            src={trackCover}
+                            alt=""
+                            className="w-11 h-11 rounded-md object-cover shrink-0 bg-dark-surface-container border border-dark-outline-variant/30"
+                          />
+                        ) : (
+                          <div className="w-11 h-11 rounded-md bg-dark-surface-container flex items-center justify-center shrink-0 text-accent">
+                            <Disc size={18} />
+                          </div>
+                        )}
+                        <div className="flex flex-col min-w-0">
+                          <span
+                            className={`font-title text-title-md truncate ${
+                              isCurrent ? 'text-accent font-semibold' : 'text-dark-on-surface'
+                            }`}
+                          >
+                            {track.title}
+                          </span>
+                          <span className="font-body text-body-sm text-muted truncate">
+                            {track.artists.join(', ')}
+                          </span>
+                        </div>
+                      </div>
+
+                      <span className="font-mono text-label-sm text-muted tabular-nums shrink-0">
+                        {formatDuration(track.duration_ms || 0)}
+                      </span>
+                    </div>
+                  );
+                })
+              )}
+            </div>
           </div>
         ) : (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div
-              style={{
-                width: 6,
-                height: 6,
-                borderRadius: '50%',
-                backgroundColor: '#a3021a',
-                boxShadow: '0 0 10px #a3021a',
-              }}
-            />
-            <span
-              style={{
-                fontSize: 12,
-                fontWeight: 700,
-                color: 'rgba(255, 255, 255, 0.7)',
-                letterSpacing: '0.04em',
-              }}
-            >
-              {waveMode ? 'МОЯ ВОЛНА' : 'СЕЙЧАС ИГРАЕТ'}
-            </span>
-          </div>
-        )}
-
-        {/* Right Tools: EQ, Mini (desktop only) */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <button
-            onClick={() => setEqOpen(true)}
-            style={{
-              width: 34,
-              height: 34,
-              borderRadius: 8,
-              backgroundColor: 'rgba(255, 255, 255, 0.08)',
-              border: 'none',
-              color: '#ffffff',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-            }}
-            title="Эквалайзер"
+          <div
+            className="h-full w-full max-w-md mx-auto flex flex-col justify-between relative overflow-hidden px-page-margin pt-gutter-md pb-gutter-xl select-none"
+            onTouchStart={handleHeaderTouchStart}
+            onTouchEnd={handleHeaderTouchEnd}
           >
-            <Sliders size={15} />
-          </button>
+            {/* Ambient Cover Glow */}
+            <div className="pointer-events-none absolute -top-20 left-1/2 -translate-x-1/2 w-96 h-96 rounded-full bg-accent opacity-15 blur-3xl" />
 
-          {!isMobile && isTauri() && (
-            <button
-              onClick={async () => {
-                setNowPlayingOpen(false);
-                await invoke('cmd_show_mini_player').catch(() => {});
-              }}
-              style={{
-                width: 34,
-                height: 34,
-                borderRadius: 8,
-                backgroundColor: 'rgba(255, 255, 255, 0.08)',
-                border: 'none',
-                color: '#ffffff',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer',
-              }}
-              title="Мини-плеер"
-            >
-              <Minimize2 size={15} />
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* MOBILE CONTENT VIEW */}
-      {isMobile ? (
-        <div
-          style={{
-            flex: 1,
-            minHeight: 0,
-            display: 'flex',
-            flexDirection: 'column',
-            padding: '16px 20px 24px',
-            zIndex: 10,
-            overflowY: 'auto',
-          }}
-        >
-          {mobileTab === 'player' ? (
-            <div
-              style={{
-                flex: 1,
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-              }}
-            >
-              {/* Big Album Artwork */}
-              <div
-                style={{
-                  width: 'min(300px, 40vh)',
-                  aspectRatio: '1',
-                  borderRadius: 16,
-                  overflow: 'hidden',
-                  backgroundColor: '#141414',
-                  boxShadow: '0 20px 50px rgba(0, 0, 0, 0.85)',
-                  margin: 'auto auto 20px',
-                  border: '1px solid rgba(255, 255, 255, 0.1)',
-                }}
+            {/* Minimal Top: Swipe-down Handle + Output Pill */}
+            <header className="relative z-10 flex flex-col items-center gap-gutter-md shrink-0">
+              <button
+                type="button"
+                onClick={() => setNowPlayingOpen(false)}
+                aria-label="Свернуть плеер свайпом"
+                className="py-gutter-xs px-gutter-xl focus:outline-none"
               >
+                <span className="block w-10 h-1 rounded-full bg-dark-outline-variant hover:bg-muted transition-colors" />
+              </button>
+
+              <div className="w-full flex items-center justify-between">
+                <div className="inline-flex items-center gap-gutter-xs px-gutter-md py-gutter-xs rounded-full bg-dark-surface-container-low border border-dark-outline-variant">
+                  <Headphones size={14} className="text-accent" />
+                  <span className="font-label text-label-sm text-dark-on-surface">Наушники</span>
+                </div>
+
+                <span className="font-mono text-label-sm text-muted px-gutter-sm py-gutter-xs rounded-full bg-dark-surface-container-low border border-dark-outline-variant">
+                  LOSSLESS
+                </span>
+              </div>
+            </header>
+
+            {/* Expansive Cover Artwork Stage */}
+            <main className="relative z-10 flex flex-col gap-gutter-lg my-auto py-gutter-md">
+              <div className="w-full aspect-square max-w-[340px] mx-auto rounded-xl overflow-hidden bg-dark-surface-container shadow-2xl border border-dark-outline-variant">
                 {coverUrl ? (
                   <img
                     src={coverUrl}
-                    alt=""
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    alt={currentTrack?.title || ''}
+                    className="w-full h-full object-cover"
                   />
                 ) : (
-                  <div
-                    style={{
-                      width: '100%',
-                      height: '100%',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                  >
-                    <Disc size={64} color="#444" />
+                  <div className="w-full h-full flex items-center justify-center text-accent">
+                    <Disc size={64} />
                   </div>
                 )}
               </div>
 
-              {/* Track Meta & Like */}
-              <div
-                style={{
-                  width: '100%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  marginBottom: 16,
-                }}
-              >
-                <div style={{ overflow: 'hidden', minWidth: 0, flex: 1, marginRight: 12 }}>
-                  <div
-                    style={{
-                      fontSize: 19,
-                      fontWeight: 800,
-                      color: '#ffffff',
-                      whiteSpace: 'nowrap',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      letterSpacing: -0.3,
-                    }}
-                  >
+              {/* Track Title & Artist + Heart */}
+              <div className="flex items-center justify-between gap-gutter-md">
+                <div className="flex flex-col gap-gutter-xs min-w-0">
+                  <h1 className="font-display text-headline-lg text-dark-on-surface truncate">
                     {currentTrack?.title || 'Нет трека'}
-                  </div>
-                  <div
-                    style={{
-                      fontSize: 14,
-                      color: 'rgba(255, 255, 255, 0.65)',
-                      whiteSpace: 'nowrap',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      marginTop: 2,
-                    }}
-                  >
+                  </h1>
+                  <p className="font-body text-title-md text-muted truncate">
                     {currentTrack?.artists.join(', ') || '—'}
-                  </div>
+                  </p>
                 </div>
 
                 {currentTrack && (
                   <button
+                    type="button"
                     onClick={() => toggleLike(currentTrack)}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      padding: 8,
-                      color: trackLiked ? '#ff3b30' : '#888888',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
+                    aria-label="Добавить в любимые"
+                    className={`shrink-0 w-11 h-11 rounded-full bg-dark-surface-container-low border border-dark-outline-variant flex items-center justify-center active:scale-95 transition-transform duration-state-change ${
+                      trackLiked ? 'text-accent' : 'text-muted hover:text-dark-on-surface'
+                    }`}
                   >
-                    <Heart size={24} fill={trackLiked ? '#ff3b30' : 'none'} />
+                    <Heart size={20} fill={trackLiked ? 'currentColor' : 'none'} />
                   </button>
                 )}
               </div>
 
-              {/* Scrubber Progress Bar */}
-              <div style={{ width: '100%', marginBottom: 16 }}>
+              {/* Integrated Live Lyrics Peek (Tap to expand!) */}
+              <button
+                type="button"
+                onClick={() => setMobileTab('lyrics')}
+                className="w-full rounded-lg bg-dark-surface-container-low border border-dark-outline-variant px-gutter-lg py-gutter-md flex items-center justify-between gap-gutter-md hover:bg-dark-surface-container transition-colors duration-state-change text-left"
+              >
+                <div className="flex flex-col gap-gutter-xs min-w-0">
+                  <span className="font-label text-label-sm text-accent">Текст сейчас</span>
+                  <p className="font-headline text-body-md text-dark-on-surface truncate">
+                    {lyrics?.lines && activeLineIndex >= 0 && lyrics.lines[activeLineIndex]
+                      ? lyrics.lines[activeLineIndex].text
+                      : 'Нажмите, чтобы открыть караоке-текст'}
+                  </p>
+                </div>
+                <Maximize2 size={18} className="text-muted shrink-0" />
+              </button>
+            </main>
+
+            {/* Thumb-Zone Controls & Waveform Scrubber */}
+            <footer className="relative z-10 flex flex-col gap-gutter-lg shrink-0">
+              {/* Dynamic Waveform Progress */}
+              <div className="flex flex-col gap-gutter-xs">
                 <div
                   ref={scrubberRef}
                   onMouseDown={handleScrubberMouseDown}
                   onTouchStart={handleScrubberTouchStart}
                   onTouchMove={handleScrubberTouchMove}
                   onTouchEnd={handleScrubberTouchEnd}
-                  style={{
-                    width: '100%',
-                    height: 24,
-                    display: 'flex',
-                    alignItems: 'center',
-                    cursor: 'pointer',
-                    position: 'relative',
-                  }}
+                  className="flex items-center justify-between gap-gutter-xs h-7 px-gutter-xs cursor-pointer"
+                  aria-label="Прогресс трека"
                 >
-                  <div
-                    style={{
-                      width: '100%',
-                      height: 5,
-                      backgroundColor: 'rgba(255, 255, 255, 0.15)',
-                      borderRadius: 3,
-                      position: 'relative',
-                      overflow: 'hidden',
-                    }}
-                  >
-                    <div
-                      style={{
-                        width: `${displayedPercent}%`,
-                        height: '100%',
-                        backgroundColor: '#ffffff',
-                        borderRadius: 3,
-                      }}
-                    />
-                  </div>
+                  {Array.from({ length: 22 }).map((_, i) => {
+                    const barPercent = (i / 21) * 100;
+                    const isPassed = displayedPercent >= barPercent;
+                    const heights = [12, 20, 16, 28, 20, 24, 12, 24, 16, 28, 20, 12, 24, 16, 20, 12, 24, 16, 20, 24, 16, 8];
+                    const height = heights[i % heights.length];
+                    return (
+                      <span
+                        key={i}
+                        className={`w-1 rounded-full transition-colors duration-100 ${
+                          isPassed
+                            ? 'bg-accent'
+                            : 'bg-dark-surface-container-highest'
+                        }`}
+                        style={{ height: `${height}px` }}
+                      />
+                    );
+                  })}
                 </div>
 
-                <div
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    fontSize: 12,
-                    color: 'rgba(255, 255, 255, 0.5)',
-                  }}
-                >
-                  <span>{formatDuration(currentTime * 1000)}</span>
-                  <span>{formatDuration(duration * 1000)}</span>
+                <div className="flex items-center justify-between">
+                  <span className="font-mono text-mono-sm text-muted tabular-nums">
+                    {formatDuration(currentTime * 1000)}
+                  </span>
+                  <span className="font-mono text-mono-sm text-muted tabular-nums">
+                    {formatDuration(duration * 1000)}
+                  </span>
                 </div>
               </div>
 
-              {/* Transport Controls */}
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  width: '100%',
-                  padding: '0 8px',
-                  marginBottom: 10,
-                }}
-              >
+              {/* Primary Transport */}
+              <div className="flex items-center justify-between gap-gutter-md">
                 <button
+                  type="button"
                   onClick={toggleShuffle}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    color: shuffle ? '#ffffff' : 'rgba(255, 255, 255, 0.35)',
-                    padding: 8,
-                  }}
+                  aria-label="Перемешать"
+                  className={`w-11 h-11 rounded-full flex items-center justify-center transition-colors ${
+                    shuffle ? 'text-accent' : 'text-muted hover:text-dark-on-surface'
+                  }`}
                 >
                   <Shuffle size={20} />
                 </button>
 
                 <button
+                  type="button"
                   onClick={playPrev}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    color: '#ffffff',
-                    padding: 8,
-                  }}
+                  aria-label="Предыдущий трек"
+                  className="w-12 h-12 rounded-full flex items-center justify-center text-dark-on-surface active:scale-95 transition-transform duration-state-change"
                 >
                   <SkipBack size={26} />
                 </button>
 
                 <button
+                  type="button"
                   onClick={togglePlay}
-                  style={{
-                    width: 62,
-                    height: 62,
-                    borderRadius: '50%',
-                    backgroundColor: '#ffffff',
-                    color: '#000000',
-                    border: 'none',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    boxShadow: '0 6px 20px rgba(255, 255, 255, 0.25)',
-                  }}
+                  aria-label={isPlaying ? 'Пауза' : 'Воспроизвести'}
+                  className="w-20 h-14 rounded-full bg-dark-on-surface text-dark-surface flex items-center justify-center shadow-xl active:scale-95 transition-transform duration-state-change"
                 >
                   {isPlaying ? (
-                    <Pause size={26} fill="#000000" />
+                    <Pause size={28} fill="currentColor" />
                   ) : (
-                    <Play size={26} fill="#000000" style={{ marginLeft: 3 }} />
+                    <Play size={28} fill="currentColor" className="ml-0.5" />
                   )}
                 </button>
 
                 <button
+                  type="button"
                   onClick={playNext}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    color: '#ffffff',
-                    padding: 8,
-                  }}
+                  aria-label="Следующий трек"
+                  className="w-12 h-12 rounded-full flex items-center justify-center text-dark-on-surface active:scale-95 transition-transform duration-state-change"
                 >
                   <SkipForward size={26} />
                 </button>
 
                 <button
+                  type="button"
                   onClick={toggleRepeat}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    color: repeat !== 'off' ? '#ffffff' : 'rgba(255, 255, 255, 0.35)',
-                    padding: 8,
-                  }}
+                  aria-label="Повтор"
+                  className={`w-11 h-11 rounded-full flex items-center justify-center transition-colors ${
+                    repeat !== 'off' ? 'text-accent' : 'text-muted hover:text-dark-on-surface'
+                  }`}
                 >
                   <Repeat size={20} />
                 </button>
               </div>
-            </div>
-          ) : (
-            /* Mobile Karaoke Lyrics View */
-            <div
-              ref={lyricsContainerRef}
+
+              {/* Thumb-Reachable Utility Strip */}
+              <div className="grid grid-cols-4 gap-gutter-sm">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (currentTrack) {
+                      usePlayerStore.getState().startEntityWave('track', currentTrack.id);
+                    }
+                  }}
+                  className="flex flex-col items-center gap-gutter-xs py-gutter-sm rounded-lg bg-dark-surface-container-low text-dark-on-surface hover:bg-dark-surface-container active:scale-95 transition-all"
+                >
+                  <Radio size={18} className="text-accent" />
+                  <span className="font-label text-label-sm">Похожие</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setMobileTab('lyrics')}
+                  className="flex flex-col items-center gap-gutter-xs py-gutter-sm rounded-lg bg-dark-surface-container-low text-dark-on-surface hover:bg-dark-surface-container active:scale-95 transition-all"
+                >
+                  <Mic2 size={18} />
+                  <span className="font-label text-label-sm">Текст</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setEqOpen(true)}
+                  className="flex flex-col items-center gap-gutter-xs py-gutter-sm rounded-lg bg-dark-surface-container-low text-dark-on-surface hover:bg-dark-surface-container active:scale-95 transition-all"
+                >
+                  <Sliders size={18} />
+                  <span className="font-label text-label-sm">Звук</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setMobileTab('queue')}
+                  className="flex flex-col items-center gap-gutter-xs py-gutter-sm rounded-lg bg-dark-surface-container-low text-dark-on-surface hover:bg-dark-surface-container active:scale-95 transition-all"
+                >
+                  <ListMusic size={18} />
+                  <span className="font-label text-label-sm">Очередь</span>
+                </button>
+              </div>
+            </footer>
+          </div>
+        )
+      ) : (
+        <>
+          {/* DESKTOP TOP HEADER */}
+          <div
+            style={{
+              height: 54,
+              padding: '0 24px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              zIndex: 10,
+              flexShrink: 0,
+              borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
+              backdropFilter: 'blur(20px)',
+              backgroundColor: 'rgba(10, 10, 10, 0.4)',
+            }}
+          >
+            <button
+              onClick={() => setNowPlayingOpen(false)}
               style={{
-                flex: 1,
-                minHeight: 0,
-                overflowY: 'auto',
                 display: 'flex',
-                flexDirection: 'column',
-                gap: 20,
-                padding: '16px 8px',
+                alignItems: 'center',
+                gap: 6,
+                padding: '7px 12px',
+                borderRadius: 8,
+                backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                border: 'none',
+                color: '#ffffff',
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: 'pointer',
               }}
             >
-              {lyrics && lyrics.lines && lyrics.lines.length > 0 ? (
-                lyrics.lines.map((line, idx) => {
-                  const isActive = idx === activeLineIndex;
-                  const isPast = idx < activeLineIndex;
-                  return (
-                    <div
-                      key={idx}
-                      ref={isActive ? activeLineRef : null}
-                      onClick={() => {
-                        if (line.time_ms !== undefined) seek(line.time_ms / 1000);
-                      }}
-                      style={{
-                        cursor: 'pointer',
-                        fontSize: isActive ? 22 : 17,
-                        fontWeight: isActive ? 800 : 500,
-                        color: isActive
-                          ? '#ffffff'
-                          : isPast
-                          ? 'rgba(255, 255, 255, 0.45)'
-                          : 'rgba(255, 255, 255, 0.22)',
-                        lineHeight: 1.4,
-                        transition: 'all 0.18s ease',
-                        padding: '6px 8px',
-                        borderRadius: 8,
-                        backgroundColor: isActive ? 'rgba(255, 255, 255, 0.08)' : 'transparent',
-                      }}
-                    >
-                      {line.text}
-                    </div>
-                  );
-                })
-              ) : (
-                <div
+              <ChevronDown size={18} />
+              <span>Свернуть</span>
+            </button>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div
+                style={{
+                  width: 6,
+                  height: 6,
+                  borderRadius: '50%',
+                  backgroundColor: '#a3021a',
+                  boxShadow: '0 0 10px #a3021a',
+                }}
+              />
+              <span
+                style={{
+                  fontSize: 12,
+                  fontWeight: 700,
+                  color: 'rgba(255, 255, 255, 0.7)',
+                  letterSpacing: '0.04em',
+                }}
+              >
+                {waveMode ? 'МОЯ ВОЛНА' : 'СЕЙЧАС ИГРАЕТ'}
+              </span>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <button
+                onClick={() => setEqOpen(true)}
+                style={{
+                  width: 34,
+                  height: 34,
+                  borderRadius: 8,
+                  backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                  border: 'none',
+                  color: '#ffffff',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                }}
+                title="Эквалайзер"
+              >
+                <Sliders size={15} />
+              </button>
+
+              {isTauri() && (
+                <button
+                  onClick={async () => {
+                    setNowPlayingOpen(false);
+                    await invoke('cmd_show_mini_player').catch(() => {});
+                  }}
                   style={{
+                    width: 34,
+                    height: 34,
+                    borderRadius: 8,
+                    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                    border: 'none',
+                    color: '#ffffff',
                     display: 'flex',
-                    flexDirection: 'column',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    height: '100%',
-                    color: 'rgba(255, 255, 255, 0.4)',
-                    textAlign: 'center',
+                    cursor: 'pointer',
                   }}
+                  title="Мини-плеер"
                 >
-                  <Mic2 size={36} color="rgba(255, 255, 255, 0.2)" style={{ marginBottom: 12 }} />
-                  <div style={{ fontSize: 16, fontWeight: 700, color: '#ffffff', marginBottom: 4 }}>
-                    Текст пока не добавлен
-                  </div>
-                  <p style={{ fontSize: 13, maxWidth: 280, margin: 0 }}>
-                    Для этой композиции синхронизированные караоке-строки отсутствуют.
-                  </p>
-                </div>
+                  <Minimize2 size={15} />
+                </button>
               )}
             </div>
-          )}
-        </div>
-      ) : (
+          </div>
         /* DESKTOP 2-COLUMN VIEW */
         <div
           style={{
@@ -1060,6 +1031,7 @@ export function ImmersiveNowPlaying() {
             </div>
           </div>
         </div>
+        </>
       )}
     </div>
   );
