@@ -13,6 +13,7 @@ import {
   Radio,
 } from 'lucide-react';
 import * as api from '../api';
+import { isTauri } from '@tauri-apps/api/core';
 import { useAuthStore } from '../store/authStore';
 import { useWindowStore } from '../store/windowStore';
 import { useEqualizerStore } from '../store/equalizerStore';
@@ -393,67 +394,69 @@ export function SettingsPage() {
         </div>
       )}
 
-      {/* External Integrations (RedWatch Bridge) */}
-      <div style={{
-        backgroundColor: 'var(--bg-card)',
-        border: '1px solid var(--border-subtle)',
-        borderRadius: 'var(--radius-md)',
-        padding: '20px 24px',
-        marginBottom: 20,
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
-          <Radio size={16} color="var(--text-secondary)" />
-          <h2 style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.8 }}>
-            Внешние интеграции (RedWatch Bridge)
-          </h2>
-        </div>
-
-        <div
-          onClick={() => setRedWatchEnabled(!redWatchEnabled)}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            padding: '12px 16px',
-            borderRadius: 'var(--radius-md)',
-            backgroundColor: 'var(--bg-active)',
-            border: '1px solid var(--border-subtle)',
-            cursor: 'pointer',
-            transition: 'all 0.15s ease',
-          }}
-        >
-          <div>
-            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>
-              Синхронизация с RedWatch / внешним агентом
-            </div>
-            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
-              Передаёт статус трека и принимает команды управления на порту 8765. Отключите, если у вас не запущено приложение RedWatch.
-            </div>
+      {/* External Integrations (RedWatch Bridge - Desktop only) */}
+      {isTauri() && (
+        <div style={{
+          backgroundColor: 'var(--bg-card)',
+          border: '1px solid var(--border-subtle)',
+          borderRadius: 'var(--radius-md)',
+          padding: '20px 24px',
+          marginBottom: 20,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+            <Radio size={16} color="var(--text-secondary)" />
+            <h2 style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.8 }}>
+              Внешние интеграции (RedWatch Bridge)
+            </h2>
           </div>
 
-          <div style={{
-            width: 44,
-            height: 24,
-            borderRadius: 12,
-            backgroundColor: redWatchEnabled ? '#ffffff' : '#2a2a2a',
-            position: 'relative',
-            transition: 'background-color 0.2s ease',
-            flexShrink: 0,
-            marginLeft: 16,
-          }}>
+          <div
+            onClick={() => setRedWatchEnabled(!redWatchEnabled)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '12px 16px',
+              borderRadius: 'var(--radius-md)',
+              backgroundColor: 'var(--bg-active)',
+              border: '1px solid var(--border-subtle)',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>
+                Синхронизация с RedWatch / внешним агентом
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+                Передаёт статус трека и принимает команды управления на порту 8765. Отключите, если у вас не запущено приложение RedWatch.
+              </div>
+            </div>
+
             <div style={{
-              width: 18,
-              height: 18,
-              borderRadius: '50%',
-              backgroundColor: redWatchEnabled ? '#0a0a0a' : '#666666',
-              position: 'absolute',
-              top: 3,
-              left: redWatchEnabled ? 23 : 3,
-              transition: 'left 0.2s ease',
-            }} />
+              width: 44,
+              height: 24,
+              borderRadius: 12,
+              backgroundColor: redWatchEnabled ? '#ffffff' : '#2a2a2a',
+              position: 'relative',
+              transition: 'background-color 0.2s ease',
+              flexShrink: 0,
+              marginLeft: 16,
+            }}>
+              <div style={{
+                width: 18,
+                height: 18,
+                borderRadius: '50%',
+                backgroundColor: redWatchEnabled ? '#0a0a0a' : '#666666',
+                position: 'absolute',
+                top: 3,
+                left: redWatchEnabled ? 23 : 3,
+                transition: 'left 0.2s ease',
+              }} />
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Playback History Section */}
       <div style={{

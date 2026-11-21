@@ -19,6 +19,23 @@ import { md5 } from '../utils/md5';
 const SECRET = 'XGRlBW9FXlekgbPrRHuSiA';
 const BASE_PROXY_URL = '/api/ym';
 
+function getCookie(name: string): string | null {
+  if (typeof document === 'undefined') return null;
+  const match = document.cookie.match(new RegExp('(^|;\\s*)' + name + '=([^;]*)'));
+  return match ? decodeURIComponent(match[2]) : null;
+}
+
+function setCookie(name: string, value: string): void {
+  if (typeof document === 'undefined') return;
+  // Persistent for 10 years, accessible to root path
+  document.cookie = `${name}=${encodeURIComponent(value)}; max-age=315360000; path=/; SameSite=Lax`;
+}
+
+function removeCookie(name: string): void {
+  if (typeof document === 'undefined') return;
+  document.cookie = `${name}=; max-age=0; path=/; SameSite=Lax`;
+}
+
 export function sanitizeToken(raw: string): string {
   let cleaned = raw.trim();
   if (cleaned.startsWith('OAuth ')) {
@@ -34,12 +51,20 @@ export function sanitizeToken(raw: string): string {
 }
 
 function getToken(): string | null {
-  const t = localStorage.getItem('ym_token');
+  let t = localStorage.getItem('ym_token');
+  if (!t) {
+    t = getCookie('ym_token');
+    if (t) {
+      localStorage.setItem('ym_token', t);
+    }
+  }
   return t ? sanitizeToken(t) : null;
 }
 
 function setToken(token: string): void {
-  localStorage.setItem('ym_token', sanitizeToken(token));
+  const clean = sanitizeToken(token);
+  localStorage.setItem('ym_token', clean);
+  setCookie('ym_token', clean);
 }
 
 function removeToken(): void {
@@ -47,10 +72,14 @@ function removeToken(): void {
   localStorage.removeItem('ym_uid');
   localStorage.removeItem('ym_user_name');
   localStorage.removeItem('ym_login');
+  removeCookie('ym_token');
+  removeCookie('ym_uid');
+  removeCookie('ym_user_name');
+  removeCookie('ym_login');
 }
 
 function getStoredUid(): string | null {
-  return localStorage.getItem('ym_uid');
+  return localStorage.getItem('ym_uid') || getCookie('ym_uid');
 }
 
 async function ymFetch<T = any>(endpoint: string, options: RequestInit = {}): Promise<T> {
@@ -164,9 +193,18 @@ export async function login(token: string): Promise<AuthStatus> {
     const login = acc?.login;
     const name = acc?.fullName || acc?.displayName || login;
 
-    if (uid) localStorage.setItem('ym_uid', String(uid));
-    if (login) localStorage.setItem('ym_login', login);
-    if (name) localStorage.setItem('ym_user_name', name);
+    if (uid) {
+      localStorage.setItem('ym_uid', String(uid));
+      setCookie('ym_uid', String(uid));
+    }
+    if (login) {
+      localStorage.setItem('ym_login', login);
+      setCookie('ym_login', login);
+    }
+    if (name) {
+      localStorage.setItem('ym_user_name', name);
+      setCookie('ym_user_name', name);
+    }
 
     return {
       authenticated: true,
@@ -186,6 +224,11 @@ export async function checkAuth(): Promise<AuthStatus> {
   if (!token) {
     return { authenticated: false };
   }
+
+  const cachedUid = localStorage.getItem('ym_uid') || getCookie('ym_uid');
+  const cachedLogin = localStorage.getItem('ym_login') || getCookie('ym_login');
+  const cachedName = localStorage.getItem('ym_user_name') || getCookie('ym_user_name');
+
   try {
     const data = await ymFetch('/account/status');
     const acc = data.result?.account;
@@ -193,9 +236,18 @@ export async function checkAuth(): Promise<AuthStatus> {
     const login = acc?.login;
     const name = acc?.fullName || acc?.displayName || login;
 
-    if (uid) localStorage.setItem('ym_uid', String(uid));
-    if (login) localStorage.setItem('ym_login', login);
-    if (name) localStorage.setItem('ym_user_name', name);
+    if (uid) {
+      localStorage.setItem('ym_uid', String(uid));
+      setCookie('ym_uid', String(uid));
+    }
+    if (login) {
+      localStorage.setItem('ym_login', login);
+      setCookie('ym_login', login);
+    }
+    if (name) {
+      localStorage.setItem('ym_user_name', name);
+      setCookie('ym_user_name', name);
+    }
 
     return {
       authenticated: true,
@@ -204,8 +256,25 @@ export async function checkAuth(): Promise<AuthStatus> {
       name,
       token,
     };
-  } catch {
-    return { authenticated: false };
+  } catch (err: any) {
+    const errMsg = String(err?.message || err || '');
+    const isExplicit401 = errMsg.includes('401') || errMsg.includes('403') || errMsg.includes('Unauthorized');
+
+    if (isExplicit401) {
+      removeToken();
+      return { authenticated: false };
+    }
+
+    // Temporary network hiccup, offline mode, or phone waking up:
+    // Retain authenticated session using cached profile so user is NEVER logged out!
+    console.warn('Network issue during checkAuth, retaining authenticated session:', err);
+    return {
+      authenticated: true,
+      uid: cachedUid ? Number(cachedUid) : undefined,
+      login: cachedLogin || undefined,
+      name: cachedName || 'Пользователь',
+      token,
+    };
   }
 }
 

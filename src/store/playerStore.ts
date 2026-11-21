@@ -157,6 +157,34 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
         'trackStarted'
       ).catch(() => {});
     }
+
+    // Proactive background queue top-up for Wave mode:
+    // When 3 or fewer tracks remain ahead, pre-fetch next batch while music is actively playing.
+    // This prevents silence between tracks on mobile iOS which causes iOS to suspend background playback!
+    const effectiveWave = isWave || isWavePlay;
+    const activeQueue = newQueue || get().queue;
+    const activeIdx = index !== undefined ? index : get().queueIndex;
+    if (effectiveWave && activeQueue.length - activeIdx <= 3 && wStationId) {
+      api.getStationTracks(wStationId, track.id).then((nextStation) => {
+        if (nextStation.tracks && nextStation.tracks.length > 0) {
+          const currentQueue = get().queue;
+          const existingIds = new Set(currentQueue.map((t) => t.id));
+          const fresh = nextStation.tracks.filter((t) => !existingIds.has(t.id));
+          if (fresh.length > 0) {
+            const updatedQueue = [...currentQueue, ...fresh];
+            set({
+              queue: updatedQueue,
+              waveBatchId: nextStation.batch_id,
+            });
+            savePlayerState({
+              queue: updatedQueue,
+              queueIndex: get().queueIndex,
+              currentTrack: get().currentTrack,
+            });
+          }
+        }
+      }).catch(() => {});
+    }
   },
 
   setQueue: (queue: TrackItem[], index = 0) => {

@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { isTauri } from '@tauri-apps/api/core';
 import { usePlayerStore } from '../store/playerStore';
 import { useWindowStore } from '../store/windowStore';
 
@@ -7,7 +8,8 @@ export function useRedWatchBridge() {
   const redWatchEnabled = useWindowStore((s) => s.redWatchEnabled);
 
   useEffect(() => {
-    if (!redWatchEnabled) return;
+    // Only run RedWatch sync on Desktop Tauri; disabled on Web/PWA to avoid mixed-content and battery drain
+    if (!isTauri() || !redWatchEnabled) return;
 
     let timerId: any = null;
     let isDisposed = false;

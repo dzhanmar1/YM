@@ -131,17 +131,15 @@ export function AudioEngine() {
     audio.setAttribute('playsinline', 'true');
     audio.setAttribute('webkit-playsinline', 'true');
 
-    // On mobile devices (Android / iOS), routing HTMLAudioElement into AudioContext
-    // via createMediaElementSource causes Chrome/Android OS to suspend playback
-    // the moment the screen turns off. Native <audio> outputs directly to the system
-    // hardware audio stack and plays smoothly with screen locked.
-    const isMobileDevice =
-      typeof navigator !== 'undefined' &&
-      (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
-        window.innerWidth <= 768);
+    // On modern iOS 16.4+ and WebKit, signal system that audio is a media player
+    // to preserve background playback and lockscreen controls
+    if ('audioSession' in navigator) {
+      try {
+        (navigator as any).audioSession.type = 'playback';
+      } catch {}
+    }
 
     const initAudioGraph = () => {
-      if (isMobileDevice) return;
       if (isGraphInitialized.current) return;
       try {
         const AudioContextClass =
@@ -207,18 +205,34 @@ export function AudioEngine() {
     const handleUserInteraction = () => {
       initAudioGraph();
       if (audioCtxRef.current && audioCtxRef.current.state === 'suspended') {
-        audioCtxRef.current.resume();
+        audioCtxRef.current.resume().catch(() => {});
       }
       window.removeEventListener('click', handleUserInteraction);
       window.removeEventListener('keydown', handleUserInteraction);
+      window.removeEventListener('touchstart', handleUserInteraction);
+      window.removeEventListener('touchend', handleUserInteraction);
     };
 
     window.addEventListener('click', handleUserInteraction);
     window.addEventListener('keydown', handleUserInteraction);
+    window.addEventListener('touchstart', handleUserInteraction, { passive: true });
+    window.addEventListener('touchend', handleUserInteraction, { passive: true });
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        if (audioCtxRef.current && audioCtxRef.current.state === 'suspended' && usePlayerStore.getState().isPlaying) {
+          audioCtxRef.current.resume().catch(() => {});
+        }
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
       window.removeEventListener('click', handleUserInteraction);
       window.removeEventListener('keydown', handleUserInteraction);
+      window.removeEventListener('touchstart', handleUserInteraction);
+      window.removeEventListener('touchend', handleUserInteraction);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
       audio.pause();
       audio.src = '';
       if (audioCtxRef.current) {
@@ -280,7 +294,6 @@ export function AudioEngine() {
 
       // Assign source immediately so audio element is always in a valid state
       audio.src = streamUrl;
-      audio.load();
 
       if (usePlayerStore.getState().isPlaying) {
         if (audioCtxRef.current && audioCtxRef.current.state === 'suspended') {
@@ -531,15 +544,9 @@ export function AudioEngine() {
           seek(details.seekTime);
         }
       });
-      navigator.mediaSession.setActionHandler('seekforward', (details) => {
-        const cur = audioRef.current?.currentTime || 0;
-        const dur = audioRef.current?.duration || 0;
-        seek(Math.min(dur, cur + (details.seekOffset || 10)));
-      });
-      navigator.mediaSession.setActionHandler('seekbackward', (details) => {
-        const cur = audioRef.current?.currentTime || 0;
-        seek(Math.max(0, cur - (details.seekOffset || 10)));
-      });
+      // Explicitly disable seekforward and seekbackward so iOS WebKit displays Previous / Next track buttons!
+      navigator.mediaSession.setActionHandler('seekforward', null);
+      navigator.mediaSession.setActionHandler('seekbackward', null);
     } catch {}
   }, [playNext, playPrev, setPlaying, seek]);
 
