@@ -1,412 +1,700 @@
 import React, { useEffect, useRef } from 'react';
-import { Play, Pause } from 'lucide-react';
 import { audioVisualizer } from '../utils/audioVisualizer';
 import { usePlayerStore } from '../store/playerStore';
 
-interface WaveVisualizerOrbProps {
+export interface WaveVisualizerOrbProps {
   onTogglePlay: () => void;
   isPlaying: boolean;
 }
 
-// Утилиты для цветов
-const hexToRgb = (hex: string): [number, number, number] => {
-  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-  return result
-    ? [
-        parseInt(result[1], 16) / 255,
-        parseInt(result[2], 16) / 255,
-        parseInt(result[3], 16) / 255,
-      ]
-    : [0, 0, 0];
+type RGB = [number, number, number];
+
+interface AuraPalette {
+  c1: RGB; // Primary neon accent
+  c2: RGB; // Secondary nebula body
+  c3: RGB; // Luminous highlight / diffraction tint
+}
+
+const PALETTES: Record<string, AuraPalette> = {
+  // Moods
+  active:            { c1: [1.00, 0.23, 0.36], c2: [0.47, 0.16, 0.79], c3: [1.00, 0.42, 0.21] },
+  fun:               { c1: [1.00, 0.30, 0.48], c2: [1.00, 0.62, 0.17], c3: [0.78, 0.22, 0.84] },
+  calm:              { c1: [0.00, 0.44, 0.95], c2: [0.00, 0.96, 0.83], c3: [0.28, 0.22, 0.82] },
+  sad:               { c1: [0.22, 0.36, 0.92], c2: [0.45, 0.22, 0.88], c3: [0.38, 0.72, 0.98] },
+  // Activities
+  driving:           { c1: [1.00, 0.18, 0.38], c2: [0.47, 0.16, 0.79], c3: [0.00, 0.83, 1.00] },
+  'work-background': { c1: [0.12, 0.38, 1.00], c2: [0.00, 0.96, 0.83], c3: [0.43, 0.36, 0.96] },
+  workout:           { c1: [1.00, 0.23, 0.36], c2: [1.00, 0.42, 0.21], c3: [1.00, 0.12, 0.54] },
+  'wake-up':         { c1: [1.00, 0.48, 0.24], c2: [1.00, 0.29, 0.49], c3: [1.00, 0.82, 0.40] },
+  'fall-asleep':     { c1: [0.24, 0.20, 0.68], c2: [0.38, 0.14, 0.74], c3: [0.22, 0.74, 0.97] },
 };
 
-const lerp = (start: number, end: number, amt: number) => (1 - amt) * start + amt * end;
-const lerpColor = (
-  c1: [number, number, number],
-  c2: [number, number, number],
-  amt: number
-): [number, number, number] => [
-  lerp(c1[0], c2[0], amt),
-  lerp(c1[1], c2[1], amt),
-  lerp(c1[2], c2[2], amt),
-];
-
-// Палитры Яндекс Музыки (YM Aura v2) под настроения и сценарии
-const MOOD_PALETTES: Record<string, string[]> = {
-  active: ['#FF3B5C', '#FF6B35', '#7928CA'], // Crimson, Amber, Purple
-  fun: ['#00F5D4', '#0070F3', '#FF3B5C'], // Cyber-teal, Ultramarine, Crimson
-  calm: ['#0070F3', '#7928CA', '#22252E'], // Ultramarine, Purple, Dark
-  sad: ['#7928CA', '#181B24', '#10131C'], // Deep Purple, Dark UI, Surface
-  driving: ['#9D4EDD', '#7B2CBF', '#FF3B5C'], // Purple night drive
-  'work-background': ['#00F5D4', '#00B4D8', '#181B24'], // Focus teal
-  favorite: ['#FF3B5C', '#BA0035', '#7928CA'], // Favorite crimson
-  discover: ['#00F5D4', '#FF3B5C', '#FF6B35'], // Discover
-  workout: ['#FF3B5C', '#FF6B35', '#FFD166'], // Workout fiery
-  'wake-up': ['#FFB703', '#FB8500', '#FF3B5C'], // Morning sun
-  'fall-asleep': ['#3A0CA3', '#4361EE', '#10131C'], // Deep sleep
+const CHARACTER_TINTS: Record<string, RGB> = {
+  favorite: [1.00, 0.23, 0.36], // Aura Coral
+  discover: [0.00, 0.96, 0.83], // Cyber Teal
+  popular:  [0.88, 0.25, 0.98], // Electric Magenta
 };
 
-// --- WebGL Шейдеры ---
+const PARTICLE_COUNT = 84;
 
-const vertexShaderSource = `
-  attribute vec2 a_position;
+const ORB_VERTEX_SHADER = `#version 300 es
+  in vec2 a_pos;
+  out vec2 v_uv;
   void main() {
-    gl_Position = vec4(a_position, 0.0, 1.0);
+    v_uv = a_pos;
+    gl_Position = vec4(a_pos, 0.0, 1.0);
   }
 `;
 
-// Версия 5: Квантовое ядро + Флюидный фон (Dual-Layer Engine)
-const fragmentShaderSource = `
-  #ifdef GL_FRAGMENT_PRECISION_HIGH
+const ORB_FRAGMENT_SHADER = `#version 300 es
   precision highp float;
-  #else
-  precision mediump float;
-  #endif
 
-  uniform vec2 u_resolution;
-  uniform float u_time;
+  in vec2 v_uv;
+  out vec4 fragColor;
 
+  uniform vec2  u_resolution;
+  uniform float u_flowPhase;
+  uniform float u_breathPhase;
+  uniform float u_ripplePhase;
   uniform float u_bass;
   uniform float u_mid;
-  uniform float u_treb;
+  uniform float u_treble;
+  uniform float u_playBlend;
+  uniform vec3  u_col1;
+  uniform vec3  u_col2;
+  uniform vec3  u_col3;
 
-  uniform vec3 u_color1;
-  uniform vec3 u_color2;
-  uniform vec3 u_color3;
+  vec4 permute(vec4 x) { return mod(((x * 34.0) + 1.0) * x, 289.0); }
+  vec4 taylorInvSqrt(vec4 r) { return 1.79284291400159 - 0.85373472095314 * r; }
 
-  // 2D Simplex Noise
-  vec3 permute(vec3 x) { return mod(((x * 34.0) + 1.0) * x, 289.0); }
-  float snoise(vec2 v){
-    const vec4 C = vec4(0.211324865405187, 0.366025403784439, -0.577350269189626, 0.024390243902439);
-    vec2 i  = floor(v + dot(v, C.yy) );
-    vec2 x0 = v -   i + dot(i, C.xx);
-    vec2 i1 = (x0.x > x0.y) ? vec2(1.0, 0.0) : vec2(0.0, 1.0);
-    vec4 x12 = x0.xyxy + C.xxzz;
-    x12.xy -= i1;
+  float snoise(vec3 v) {
+    const vec2 C = vec2(1.0 / 6.0, 1.0 / 3.0);
+    const vec4 D = vec4(0.0, 0.5, 1.0, 2.0);
+    vec3 i  = floor(v + dot(v, C.yyy));
+    vec3 x0 = v - i + dot(i, C.xxx);
+    vec3 g  = step(x0.yzx, x0.xyz);
+    vec3 l  = 1.0 - g;
+    vec3 i1 = min(g.xyz, l.zxy);
+    vec3 i2 = max(g.xyz, l.zxy);
+    vec3 x1 = x0 - i1 + C.xxx;
+    vec3 x2 = x0 - i2 + C.yyy;
+    vec3 x3 = x0 - D.yyy;
     i = mod(i, 289.0);
-    vec3 p = permute( permute( i.y + vec3(0.0, i1.y, 1.0 )) + i.x + vec3(0.0, i1.x, 1.0 ));
-    vec3 m = max(0.5 - vec3(dot(x0,x0), dot(x12.xy,x12.xy), dot(x12.zw,x12.zw)), 0.0);
-    m = m * m; m = m * m;
-    vec3 x = 2.0 * fract(p * C.www) - 1.0;
-    vec3 h = abs(x) - 0.5;
-    vec3 ox = floor(x + 0.5);
-    vec3 a0 = x - ox;
-    m *= 1.79284291400159 - 0.85373472095314 * ( a0 * a0 + h * h );
-    vec3 g;
-    g.x  = a0.x  * x0.x  + h.x  * x0.y;
-    g.yz = a0.yz * x12.xz + h.yz * x12.yw;
-    return 130.0 * dot(m, g);
+    vec4 p = permute(permute(permute(
+        i.z + vec4(0.0, i1.z, i2.z, 1.0))
+      + i.y + vec4(0.0, i1.y, i2.y, 1.0))
+      + i.x + vec4(0.0, i1.x, i2.x, 1.0));
+    float n_ = 1.0 / 7.0;
+    vec3 ns = n_ * D.wyz - D.xzx;
+    vec4 j = p - 49.0 * floor(p * ns.z * ns.z);
+    vec4 x_ = floor(j * ns.z);
+    vec4 y_ = floor(j - 7.0 * x_);
+    vec4 x = x_ * ns.x + ns.yyyy;
+    vec4 y = y_ * ns.x + ns.yyyy;
+    vec4 h = 1.0 - abs(x) - abs(y);
+    vec4 b0 = vec4(x.xy, y.xy);
+    vec4 b1 = vec4(x.zw, y.zw);
+    vec4 s0 = floor(b0) * 2.0 + 1.0;
+    vec4 s1 = floor(b1) * 2.0 + 1.0;
+    vec4 sh = -step(h, vec4(0.0));
+    vec4 a0 = b0.xzyw + s0.xzyw * sh.xxyy;
+    vec4 a1 = b1.xzyw + s1.xzyw * sh.zzww;
+    vec3 p0 = vec3(a0.xy, h.x);
+    vec3 p1 = vec3(a0.zw, h.y);
+    vec3 p2 = vec3(a1.xy, h.z);
+    vec3 p3 = vec3(a1.zw, h.w);
+    vec4 norm = taylorInvSqrt(vec4(dot(p0, p0), dot(p1, p1), dot(p2, p2), dot(p3, p3)));
+    p0 *= norm.x; p1 *= norm.y; p2 *= norm.z; p3 *= norm.w;
+    vec4 m = max(0.6 - vec4(dot(x0, x0), dot(x1, x1), dot(x2, x2), dot(x3, x3)), 0.0);
+    m = m * m;
+    return 42.0 * dot(m * m, vec4(dot(p0, x0), dot(p1, x1), dot(p2, x2), dot(p3, x3)));
+  }
+
+  float fbmSmooth(vec3 p) {
+    float v = 0.0;
+    float a = 0.52;
+    for (int i = 0; i < 3; i++) {
+      v += a * snoise(p);
+      p = p * 1.92 + vec3(1.7, 2.3, 0.9);
+      a *= 0.48;
+    }
+    return v;
+  }
+
+  mat2 rot2D(float a) {
+    float s = sin(a), c = cos(a);
+    return mat2(c, -s, s, c);
+  }
+
+  float evalOrbRadius(vec2 p) {
+    float ang = atan(p.y, p.x);
+    float breathe = sin(u_breathPhase) * 0.018;
+    float h2 = sin(ang * 2.0 - u_flowPhase * 1.15) * (0.012 + u_bass * 0.024);
+    float h3 = sin(ang * 3.0 - u_flowPhase * 1.65 + 1.2) * (0.008 + u_mid * 0.018);
+    float h4 = cos(ang * 4.0 - u_flowPhase * 0.90) * (0.004 + u_treble * 0.011);
+    return 0.46 + breathe + u_bass * 0.055 + h2 + h3 + h4;
+  }
+
+  vec3 shadeSphere(vec2 p, float R, out float sphereAlpha) {
+    float r = length(p);
+    float edgeSoftness = 0.022 + u_bass * 0.012;
+    sphereAlpha = 1.0 - smoothstep(R - edgeSoftness, R + edgeSoftness, r);
+
+    vec2 np = p / max(R, 0.001);
+    float zSq = max(0.0, 1.0 - dot(np, np));
+    float z = sqrt(zSq);
+    vec3 N = normalize(vec3(np, z + 0.0001));
+
+    vec3 sp = N;
+    sp.xz = rot2D(u_flowPhase * 0.42) * sp.xz;
+    sp.yz = rot2D(0.32 + u_flowPhase * 0.14) * sp.yz;
+
+    vec3 drift = vec3(u_flowPhase * 0.22, -u_flowPhase * 0.12, u_flowPhase * 0.16);
+    float n1 = fbmSmooth(sp * 1.65 + drift);
+    float n2 = fbmSmooth(sp * 2.35 + vec3(n1 * 0.55) - drift * 0.7);
+
+    float silkBand1 = smoothstep(-0.35, 0.65, sin(n2 * 3.4 + sp.y * 2.2 - u_flowPhase * 0.65));
+    float silkBand2 = smoothstep(0.10, 0.92, cos(n1 * 3.0 - sp.x * 2.0 + u_flowPhase * 0.45));
+
+    vec3 darkCore = vec3(0.055, 0.068, 0.115);
+    vec3 body = mix(darkCore, u_col2 * 0.92, 0.38 + silkBand1 * 0.52);
+    body = mix(body, u_col1 * 1.15, silkBand2 * (0.48 + u_mid * 0.34));
+
+    float sheen = pow(clamp(silkBand1 * silkBand2, 0.0, 1.0), 1.8);
+    body += u_col3 * sheen * (0.42 + u_treble * 0.68 + u_bass * 0.25);
+
+    float fresnel = pow(1.0 - clamp(z, 0.0, 1.0), 2.35);
+    vec3 rimColor = mix(u_col1, u_col3, 0.5 + 0.5 * sin(atan(p.y, p.x) - u_flowPhase * 0.7));
+    body += rimColor * fresnel * (0.95 + u_bass * 0.65 + u_treble * 0.35);
+
+    vec3 lightDir = normalize(vec3(-0.45, 0.58, 0.68));
+    vec3 perturbedN = normalize(N + vec3(n1, n2, 0.0) * 0.16);
+    float spec = pow(max(dot(perturbedN, lightDir), 0.0), 14.0);
+    body += mix(vec3(1.0), u_col3, 0.35) * spec * (0.28 + u_treble * 0.22);
+
+    float heart = exp(-r * r * 14.0);
+    body += mix(u_col1, vec3(1.0, 0.92, 0.96), 0.35) * heart * (0.14 + u_bass * 0.34);
+
+    return body;
   }
 
   void main() {
-    // Нормализация координат
-    vec2 uv = (gl_FragCoord.xy - 0.5 * u_resolution.xy) / min(u_resolution.x, u_resolution.y);
-    float dist = length(uv);
-    float angle = atan(uv.y, uv.x);
-    float time = u_time * 0.5;
+    vec2 uv = v_uv;
+    uv.x *= u_resolution.x / max(u_resolution.y, 1.0);
+    float r = length(uv);
 
-    // ==========================================
-    // СЛОЙ 1: ФОНОВАЯ ФЛЮИДНАЯ ПЛАЗМА (Окружение)
-    // ==========================================
-    vec2 bgUV = uv * 0.65;
-    float flow = time - length(bgUV) * 1.5;
+    float chromaAmt = 0.004 + u_bass * 0.011 + u_treble * 0.006;
+    vec2 radialDir = r > 0.0001 ? (uv / r) : vec2(0.0);
 
-    vec2 warp = bgUV;
-    warp.x += snoise(vec2(bgUV.x * 2.0 + flow, bgUV.y * 2.0)) * 0.15 * (1.0 + u_bass * 1.5);
-    warp.y += snoise(vec2(bgUV.x * 2.0, bgUV.y * 2.0 - flow)) * 0.15 * (1.0 + u_bass * 1.5);
+    float R0 = evalOrbRadius(uv);
+    float alphaG = 0.0;
+    vec3 colCenter = shadeSphere(uv, R0, alphaG);
 
-    float bgDensity = smoothstep(1.0, 0.15, length(warp)); // Плавно тает к краям
+    float rimZone = smoothstep(R0 * 0.55, R0 * 1.02, r);
+    float alphaR = 0.0, alphaB = 0.0;
+    vec3 colR = shadeSphere(uv - radialDir * chromaAmt * rimZone, R0, alphaR);
+    vec3 colB = shadeSphere(uv + radialDir * chromaAmt * rimZone, R0, alphaB);
 
-    vec3 bgColor = mix(u_color3, u_color1, snoise(warp * 2.0 + time) * 0.5 + 0.5);
-    bgColor = mix(bgColor, u_color2, snoise(warp * 3.0 - time) * 0.5 + 0.5);
+    vec3 orbColor = vec3(
+      mix(colCenter.r, colR.r, 0.65 * rimZone),
+      colCenter.g,
+      mix(colCenter.b, colB.b, 0.65 * rimZone)
+    );
+    float orbAlpha = max(alphaG, max(alphaR, alphaB) * 0.72);
 
-    // Мягкий фон, реагирующий на басы только яркостью
-    vec3 bgLayer = bgColor * bgDensity * (0.25 + u_bass * 0.5);
+    float distOut = max(0.0, r - R0 * 0.85);
+    float glowInner = exp(-distOut * (4.2 - u_bass * 1.1));
+    float glowOuter = exp(-distOut * (2.1 - u_bass * 0.35));
+    float ang = atan(uv.y, uv.x);
+    float auraAngleMix = 0.5 + 0.5 * sin(ang - u_flowPhase * 0.55);
+    vec3 auraTint = mix(u_col2, u_col1, auraAngleMix);
+    auraTint = mix(auraTint, u_col3, 0.22 * (0.5 + 0.5 * cos(ang * 2.0 - u_flowPhase * 0.4)));
 
-    // ==========================================
-    // СЛОЙ 2: КВАНТОВОЕ ЯДРО (Аудио-визуализатор)
-    // ==========================================
+    vec3 aura = auraTint * (glowInner * (0.48 + u_bass * 0.38) + glowOuter * (0.20 + u_mid * 0.16));
 
-    float coreRadius = 0.14 + u_bass * 0.03; // Размер стеклянной сферы
+    float wave1 = fract(u_ripplePhase * 0.32);
+    float wave2 = fract(u_ripplePhase * 0.32 + 0.5);
+    float ringRadius1 = R0 + wave1 * 0.44;
+    float ringRadius2 = R0 + wave2 * 0.44;
+    float ringWidth = 0.012 + u_bass * 0.010;
+    float ring1 = exp(-pow((r - ringRadius1) / ringWidth, 2.0)) * (1.0 - wave1) * smoothstep(0.0, 0.12, wave1);
+    float ring2 = exp(-pow((r - ringRadius2) / ringWidth, 2.0)) * (1.0 - wave2) * smoothstep(0.0, 0.12, wave2);
 
-    // 2.1 ГЕОМЕТРИЯ ВОЛНЫ (Oscilloscope Rings)
-    float wave = 0.0;
-    // Структурные искажения от средних частот
-    wave += snoise(vec2(angle * 5.0, time * 1.5)) * (u_mid * 0.08);
-    // Резкая дрожь от высоких частот
-    wave += snoise(vec2(angle * 14.0, time * 3.0)) * (u_treb * 0.06);
-    // Экстремальные иглы-выбросы (spikes) на пиках
-    float spikes = pow(abs(sin(angle * 22.0 + time * 5.0)), 30.0);
-    wave += spikes * (u_treb * 0.15) * sign(snoise(vec2(angle * 3.0, time)));
+    float ringIntensity = (0.06 + u_playBlend * 0.18 + u_bass * 0.32);
+    vec3 ringCol = mix(u_col1, u_col3, 0.55) * ring1 + mix(u_col2, u_col3, 0.45) * ring2;
+    aura += ringCol * ringIntensity;
 
-    // Орбита кольца вокруг ядра
-    float ringRadius = coreRadius + 0.06 + wave;
-    float ringDist = abs(dist - ringRadius);
+    float canvasMask = 1.0 - smoothstep(0.76, 0.995, r);
+    vec3 finalRGB = orbColor * orbAlpha + aura * (1.0 - orbAlpha * 0.62) * canvasMask;
+    finalRGB = finalRGB / (1.0 + finalRGB * 0.22);
 
-    // Рисуем кольцо (очень яркая тонкая линия + мягкое свечение)
-    float ringGlow = (0.0015 + u_treb * 0.003) / (ringDist + 0.0001);
-    ringGlow += smoothstep(0.05 + u_mid * 0.05, 0.0, ringDist) * 0.5;
+    float dither = (fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453) - 0.5) / 255.0;
+    finalRGB = max(finalRGB + dither, 0.0);
 
-    vec3 ringColor = mix(u_color1, u_color2, sin(angle * 2.0 - time * 2.0) * 0.5 + 0.5);
-    vec3 ringLayer = ringColor * ringGlow;
+    float lumAlpha = clamp(max(finalRGB.r, max(finalRGB.g, finalRGB.b)) * 1.35, 0.0, 1.0);
+    float finalAlpha = clamp(max(orbAlpha, lumAlpha) * canvasMask, 0.0, 1.0);
 
-    // 2.2 ВНУТРИ СФЕРЫ (Тёмное стекло + Энергетическая звезда)
-    float insideGlass = smoothstep(coreRadius, coreRadius - 0.01, dist);
-
-    // Затемняем фон за стеклом (создаем иллюзию объема)
-    bgLayer *= (1.0 - insideGlass * 0.85);
-
-    // Внутренняя пульсирующая звезда (танцует от баса)
-    vec2 starPos = vec2(snoise(vec2(time * 2.0)), snoise(vec2(-time * 2.0))) * 0.02 * u_bass;
-    float starDist = length(uv + starPos);
-    float starGlow = (0.01 + u_bass * 0.03) / (starDist + 0.001);
-    starGlow *= insideGlass; // Ограничиваем звезду стенками стекла
-    vec3 starLayer = mix(u_color3, vec3(1.0), u_bass) * starGlow * 1.5;
-
-    // 2.3 ОПТИКА КРАЁВ (Fresnel)
-    // Преломление света на краях стеклянного шара
-    float glassEdge = smoothstep(coreRadius - 0.02, coreRadius, dist) * smoothstep(coreRadius + 0.02, coreRadius, dist);
-    vec3 edgeLayer = u_color2 * glassEdge * 3.0 * (0.5 + u_mid);
-
-    // ==========================================
-    // ФИНАЛЬНЫЙ КОМПОЗИТ
-    // ==========================================
-    vec3 finalColor = bgLayer + ringLayer + starLayer + edgeLayer;
-
-    // Глубокая виньетка по краям экрана, чтобы плазма бесконечно таяла в фоне
-    finalColor *= smoothstep(1.0, 0.35, length(uv));
-
-    // Контраст (Tonemapping)
-    finalColor = pow(finalColor, vec3(0.85));
-
-    gl_FragColor = vec4(finalColor, 1.0);
+    fragColor = vec4(finalRGB * canvasMask, finalAlpha);
   }
 `;
 
-export const WaveVisualizerOrb: React.FC<WaveVisualizerOrbProps> = ({ onTogglePlay, isPlaying }) => {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const isPlayingRef = useRef(isPlaying);
-  const { waveSettings } = usePlayerStore();
+const PARTICLE_VERTEX_SHADER = `#version 300 es
+  in vec4 a_seed;
+  uniform vec2  u_resolution;
+  uniform float u_orbitPhase;
+  uniform float u_bass;
+  uniform float u_treble;
+  uniform float u_dpr;
 
-  useEffect(() => {
-    isPlayingRef.current = isPlaying;
-  }, [isPlaying]);
+  out float v_alpha;
+  out float v_tint;
 
-  const moodKey =
-    waveSettings?.mood ||
-    waveSettings?.activity ||
-    waveSettings?.character ||
+  void main() {
+    float angle = a_seed.x + u_orbitPhase * a_seed.z;
+    float tilt = 0.55 + 0.35 * sin(a_seed.w * 6.2831);
+    float rad = a_seed.y + u_bass * 0.055;
+
+    float x3d = cos(angle) * rad;
+    float y3d = sin(angle) * rad * tilt;
+    float z3d = sin(angle) * 0.5;
+
+    float planeAngle = a_seed.w * 3.14159;
+    float cs = cos(planeAngle), sn = sin(planeAngle);
+    vec2 pos = vec2(x3d * cs - y3d * sn, x3d * sn + y3d * cs);
+
+    pos.x /= (u_resolution.x / max(u_resolution.y, 1.0));
+    gl_Position = vec4(pos, 0.0, 1.0);
+
+    float twinkle = 0.45 + 0.55 * sin(u_orbitPhase * 4.0 + a_seed.w * 25.0);
+    float depthScale = 0.65 + 0.55 * (z3d + 0.5);
+    gl_PointSize = (1.8 + a_seed.w * 2.6 + u_treble * 2.2) * depthScale * u_dpr;
+
+    float edgeFade = 1.0 - smoothstep(0.74, 0.96, length(pos));
+    v_alpha = (0.14 + 0.42 * twinkle + u_treble * 0.35) * depthScale * edgeFade;
+    v_tint = fract(a_seed.w * 3.7);
+  }
+`;
+
+const PARTICLE_FRAGMENT_SHADER = `#version 300 es
+  precision highp float;
+  in float v_alpha;
+  in float v_tint;
+  uniform vec3 u_col1;
+  uniform vec3 u_col3;
+  out vec4 fragColor;
+
+  void main() {
+    vec2 c = gl_PointCoord - 0.5;
+    float d = length(c) * 2.0;
+    if (d > 1.0) discard;
+    float glow = pow(1.0 - d, 2.2);
+    vec3 col = mix(u_col1, u_col3, v_tint);
+    col = mix(col, vec3(1.0), 0.35 * glow);
+    float a = glow * v_alpha;
+    fragColor = vec4(col * a, a);
+  }
+`;
+
+function resolveTargetPalette(waveSettings?: {
+  mood?: string;
+  activity?: string;
+  character?: string;
+} | null): AuraPalette {
+  const key =
+    (waveSettings?.activity && PALETTES[waveSettings.activity] ? waveSettings.activity : null) ??
+    (waveSettings?.mood && PALETTES[waveSettings.mood] ? waveSettings.mood : null) ??
     'active';
 
-  const stateRef = useRef<{
-    bass: number;
-    mid: number;
-    treb: number;
-    colors: [[number, number, number], [number, number, number], [number, number, number]];
-  }>({
-    bass: 0,
-    mid: 0,
-    treb: 0,
-    colors: [
-      hexToRgb('#FF3B5C'),
-      hexToRgb('#FF6B35'),
-      hexToRgb('#7928CA'),
+  const base = PALETTES[key] ?? PALETTES.active;
+  const tint = waveSettings?.character ? CHARACTER_TINTS[waveSettings.character] : undefined;
+
+  if (!tint) return base;
+
+  return {
+    c1: base.c1,
+    c2: base.c2,
+    c3: [
+      base.c3[0] * 0.78 + tint[0] * 0.22,
+      base.c3[1] * 0.78 + tint[1] * 0.22,
+      base.c3[2] * 0.78 + tint[2] * 0.22,
     ],
-  });
+  };
+}
+
+function compileProgram(
+  gl: WebGL2RenderingContext,
+  vsSource: string,
+  fsSource: string
+): WebGLProgram | null {
+  const compileShader = (type: number, source: string) => {
+    const shader = gl.createShader(type);
+    if (!shader) return null;
+    gl.shaderSource(shader, source);
+    gl.compileShader(shader);
+    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+      console.error('[WaveVisualizerOrb] Shader compile error:', gl.getShaderInfoLog(shader));
+      gl.deleteShader(shader);
+      return null;
+    }
+    return shader;
+  };
+
+  const vs = compileShader(gl.VERTEX_SHADER, vsSource);
+  const fs = compileShader(gl.FRAGMENT_SHADER, fsSource);
+  if (!vs || !fs) return null;
+
+  const program = gl.createProgram();
+  if (!program) return null;
+  gl.attachShader(program, vs);
+  gl.attachShader(program, fs);
+  gl.linkProgram(program);
+
+  gl.deleteShader(vs);
+  gl.deleteShader(fs);
+
+  if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+    console.error('[WaveVisualizerOrb] Program link error:', gl.getProgramInfoLog(program));
+    gl.deleteProgram(program);
+    return null;
+  }
+  return program;
+}
+
+export const WaveVisualizerOrb: React.FC<WaveVisualizerOrbProps> = ({
+  onTogglePlay,
+  isPlaying: propIsPlaying,
+}) => {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  const { waveSettings, isPlaying: storeIsPlaying } = usePlayerStore();
+  const effectiveIsPlaying = propIsPlaying ?? storeIsPlaying;
+
+  // Keep reactive refs so the 60fps WebGL loop never restarts on state changes
+  const isPlayingRef = useRef<boolean>(effectiveIsPlaying);
+  const targetPaletteRef = useRef<AuraPalette>(resolveTargetPalette(waveSettings));
+
+  useEffect(() => {
+    isPlayingRef.current = effectiveIsPlaying;
+  }, [effectiveIsPlaying]);
+
+  useEffect(() => {
+    targetPaletteRef.current = resolveTargetPalette(waveSettings);
+  }, [waveSettings?.mood, waveSettings?.activity, waveSettings?.character]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    const container = containerRef.current;
+    if (!canvas || !container) return;
 
-    const gl = canvas.getContext('webgl', { alpha: true });
+    const gl = canvas.getContext('webgl2', {
+      alpha: true,
+      antialias: true,
+      premultipliedAlpha: true,
+      powerPreference: 'high-performance',
+    });
+
     if (!gl) {
-      console.warn('WebGL is not supported');
-      return;
+      // Graceful Canvas 2D fallback if WebGL2 is unavailable
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      let fallbackRaf = 0;
+      let phase = 0;
+      let last = performance.now();
+
+      const drawFallback = (now: number) => {
+        const dt = Math.min((now - last) * 0.001, 0.05);
+        last = now;
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        const w = Math.max(1, Math.round(container.clientWidth * dpr));
+        const h = Math.max(1, Math.round(container.clientHeight * dpr));
+        if (canvas.width !== w || canvas.height !== h) {
+          canvas.width = w;
+          canvas.height = h;
+        }
+        phase += dt * (isPlayingRef.current ? 1.4 : 0.6);
+        ctx.clearRect(0, 0, w, h);
+
+        const pal = targetPaletteRef.current;
+        const cx = w / 2;
+        const cy = h / 2;
+        const r = Math.min(w, h) * (0.24 + Math.sin(phase) * 0.015);
+        const grad = ctx.createRadialGradient(cx, cy, r * 0.1, cx, cy, r * 1.9);
+        grad.addColorStop(0, `rgba(${pal.c1[0] * 255}, ${pal.c1[1] * 255}, ${pal.c1[2] * 255}, 0.85)`);
+        grad.addColorStop(0.5, `rgba(${pal.c2[0] * 255}, ${pal.c2[1] * 255}, ${pal.c2[2] * 255}, 0.45)`);
+        grad.addColorStop(1, 'rgba(16, 19, 28, 0)');
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(cx, cy, r * 1.9, 0, Math.PI * 2);
+        ctx.fill();
+
+        fallbackRaf = requestAnimationFrame(drawFallback);
+      };
+
+      fallbackRaf = requestAnimationFrame(drawFallback);
+      return () => cancelAnimationFrame(fallbackRaf);
     }
 
-    const compileShader = (type: number, source: string) => {
-      const shader = gl.createShader(type);
-      if (!shader) return null;
-      gl.shaderSource(shader, source);
-      gl.compileShader(shader);
-      if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-        console.error('Shader compile error:', gl.getShaderInfoLog(shader));
-        gl.deleteShader(shader);
-        return null;
-      }
-      return shader;
+    const orbProg = compileProgram(gl, ORB_VERTEX_SHADER, ORB_FRAGMENT_SHADER);
+    const particleProg = compileProgram(gl, PARTICLE_VERTEX_SHADER, PARTICLE_FRAGMENT_SHADER);
+    if (!orbProg || !particleProg) return;
+
+    // Fullscreen Quad Geometry
+    const quadVAO = gl.createVertexArray();
+    const quadBuf = gl.createBuffer();
+    gl.bindVertexArray(quadVAO);
+    gl.bindBuffer(gl.ARRAY_BUFFER, quadBuf);
+    gl.bufferData(
+      gl.ARRAY_BUFFER,
+      new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]),
+      gl.STATIC_DRAW
+    );
+    const aPos = gl.getAttribLocation(orbProg, 'a_pos');
+    gl.enableVertexAttribArray(aPos);
+    gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
+
+    // Orbital Micro-Stardust Geometry
+    const particleVAO = gl.createVertexArray();
+    const partBuf = gl.createBuffer();
+    const seeds = new Float32Array(PARTICLE_COUNT * 4);
+    for (let i = 0; i < PARTICLE_COUNT; i++) {
+      seeds[i * 4 + 0] = (i / PARTICLE_COUNT) * Math.PI * 2 + (Math.random() - 0.5) * 0.4;
+      seeds[i * 4 + 1] = 0.52 + Math.random() * 0.32;
+      seeds[i * 4 + 2] = 0.45 + Math.random() * 0.75;
+      seeds[i * 4 + 3] = Math.random();
+    }
+    gl.bindVertexArray(particleVAO);
+    gl.bindBuffer(gl.ARRAY_BUFFER, partBuf);
+    gl.bufferData(gl.ARRAY_BUFFER, seeds, gl.STATIC_DRAW);
+    const aSeed = gl.getAttribLocation(particleProg, 'a_seed');
+    gl.enableVertexAttribArray(aSeed);
+    gl.vertexAttribPointer(aSeed, 4, gl.FLOAT, false, 0, 0);
+    gl.bindVertexArray(null);
+
+    const orbLoc = {
+      resolution:  gl.getUniformLocation(orbProg, 'u_resolution'),
+      flowPhase:   gl.getUniformLocation(orbProg, 'u_flowPhase'),
+      breathPhase: gl.getUniformLocation(orbProg, 'u_breathPhase'),
+      ripplePhase: gl.getUniformLocation(orbProg, 'u_ripplePhase'),
+      bass:        gl.getUniformLocation(orbProg, 'u_bass'),
+      mid:         gl.getUniformLocation(orbProg, 'u_mid'),
+      treble:      gl.getUniformLocation(orbProg, 'u_treble'),
+      playBlend:   gl.getUniformLocation(orbProg, 'u_playBlend'),
+      col1:        gl.getUniformLocation(orbProg, 'u_col1'),
+      col2:        gl.getUniformLocation(orbProg, 'u_col2'),
+      col3:        gl.getUniformLocation(orbProg, 'u_col3'),
     };
 
-    const vertexShader = compileShader(gl.VERTEX_SHADER, vertexShaderSource);
-    const fragmentShader = compileShader(gl.FRAGMENT_SHADER, fragmentShaderSource);
+    const partLoc = {
+      resolution: gl.getUniformLocation(particleProg, 'u_resolution'),
+      orbitPhase: gl.getUniformLocation(particleProg, 'u_orbitPhase'),
+      bass:       gl.getUniformLocation(particleProg, 'u_bass'),
+      treble:     gl.getUniformLocation(particleProg, 'u_treble'),
+      dpr:        gl.getUniformLocation(particleProg, 'u_dpr'),
+      col1:       gl.getUniformLocation(particleProg, 'u_col1'),
+      col3:       gl.getUniformLocation(particleProg, 'u_col3'),
+    };
 
-    const program = gl.createProgram();
-    if (!program || !vertexShader || !fragmentShader) return;
-
-    gl.attachShader(program, vertexShader);
-    gl.attachShader(program, fragmentShader);
-    gl.linkProgram(program);
-
-    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-      console.error('Program link error:', gl.getProgramInfoLog(program));
-      return;
-    }
-
-    gl.useProgram(program);
-
-    const vertices = new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]);
-    const buffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-    gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
-
-    const positionLoc = gl.getAttribLocation(program, 'a_position');
-    gl.enableVertexAttribArray(positionLoc);
-    gl.vertexAttribPointer(positionLoc, 2, gl.FLOAT, false, 0, 0);
-
-    const uResolution = gl.getUniformLocation(program, 'u_resolution');
-    const uTime = gl.getUniformLocation(program, 'u_time');
-    const uBass = gl.getUniformLocation(program, 'u_bass');
-    const uMid = gl.getUniformLocation(program, 'u_mid');
-    const uTreb = gl.getUniformLocation(program, 'u_treb');
-    const uColor1 = gl.getUniformLocation(program, 'u_color1');
-    const uColor2 = gl.getUniformLocation(program, 'u_color2');
-    const uColor3 = gl.getUniformLocation(program, 'u_color3');
-
-    let animationId: number;
-    const startTime = performance.now();
-
+    // HiDPI ResizeObserver
+    let currentDpr = Math.min(window.devicePixelRatio || 1, 2.5);
     const handleResize = () => {
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      const rect = canvas.getBoundingClientRect();
-      const w = Math.round(rect.width * dpr);
-      const h = Math.round(rect.height * dpr);
+      const rect = container.getBoundingClientRect();
+      currentDpr = Math.min(window.devicePixelRatio || 1, 2.5);
+      const w = Math.max(1, Math.round(rect.width * currentDpr));
+      const h = Math.max(1, Math.round(rect.height * currentDpr));
       if (canvas.width !== w || canvas.height !== h) {
         canvas.width = w;
         canvas.height = h;
         gl.viewport(0, 0, w, h);
-        gl.uniform2f(uResolution, w, h);
       }
     };
 
-    window.addEventListener('resize', handleResize);
+    const resizeObserver = new ResizeObserver(handleResize);
+    resizeObserver.observe(container);
     handleResize();
 
-    const mathLerp = (a: number, b: number, t: number) => a + (b - a) * t;
+    const onContextLost = (e: Event) => e.preventDefault();
+    canvas.addEventListener('webglcontextlost', onContextLost, false);
 
-    const render = () => {
-      const time = (performance.now() - startTime) * 0.001;
-      const freqData = audioVisualizer.getFrequencyData();
+    // Monotonic Phase Integrators & Smooth Color State
+    let flowPhase = 0;
+    let breathPhase = 0;
+    let ripplePhase = 0;
+    let orbitPhase = 0;
+    let smoothBass = 0;
+    let smoothMid = 0;
+    let smoothTreble = 0;
+    let playBlend = isPlayingRef.current ? 1 : 0;
 
-      let rawBass = 0;
-      let rawMid = 0;
-      let rawTreb = 0;
+    const initPal = targetPaletteRef.current;
+    const curCol1: RGB = [...initPal.c1];
+    const curCol2: RGB = [...initPal.c2];
+    const curCol3: RGB = [...initPal.c3];
 
-      if (isPlayingRef.current && freqData && freqData.length > 0) {
-        const bLen = Math.min(10, freqData.length);
-        for (let i = 0; i < bLen; i++) rawBass += freqData[i] || 0;
-        const mLen = Math.min(60, freqData.length);
-        for (let i = bLen; i < mLen; i++) rawMid += freqData[i] || 0;
-        const tLen = Math.min(128, freqData.length);
-        for (let i = mLen; i < tLen; i++) rawTreb += freqData[i] || 0;
+    let rafId = 0;
+    let lastTime = performance.now();
 
-        rawBass = Math.pow((rawBass / Math.max(1, bLen)) / 255.0, 1.8) * 1.5;
-        rawMid = Math.pow((rawMid / Math.max(1, mLen - bLen)) / 255.0, 1.2) * 1.2;
-        rawTreb = Math.pow((rawTreb / Math.max(1, tLen - mLen)) / 255.0, 1.5) * 1.5;
-      } else {
-        // Органическое дыхание в состоянии покоя
-        const breath = time * 1.5;
-        rawBass = (Math.sin(breath) * 0.5 + 0.5) * 0.14;
-        rawMid = (Math.cos(breath * 1.2) * 0.5 + 0.5) * 0.09;
-        rawTreb = 0.05;
+    const render = (now: number) => {
+      const dt = Math.min((now - lastTime) * 0.001, 0.05);
+      lastTime = now;
+
+      let targetBass = 0;
+      let targetMid = 0;
+      let targetTreble = 0;
+
+      if (isPlayingRef.current) {
+        const freqData: Uint8Array = audioVisualizer.getFrequencyData();
+        const len = freqData ? freqData.length : 0;
+        if (len > 0) {
+          let sumBass = 0;
+          let sumMid = 0;
+          let sumHigh = 0;
+          const bEnd = Math.min(10, len);
+          const mEnd = Math.min(42, len);
+          const hEnd = Math.min(110, len);
+
+          for (let i = 0; i < bEnd; i++) sumBass += freqData[i] || 0;
+          for (let i = bEnd; i < mEnd; i++) sumMid += freqData[i] || 0;
+          for (let i = mEnd; i < hEnd; i++) sumHigh += freqData[i] || 0;
+
+          targetBass = Math.pow(sumBass / (Math.max(1, bEnd) * 255), 1.15);
+          targetMid = Math.pow(sumMid / (Math.max(1, mEnd - bEnd) * 255), 1.05);
+          targetTreble = Math.pow(sumHigh / (Math.max(1, hEnd - mEnd) * 255), 1.0);
+        }
       }
 
-      const st = stateRef.current;
-      // Очень резкий отклик на удар (attack), плавное затухание (release)
-      st.bass = rawBass > st.bass ? mathLerp(st.bass, rawBass, 0.6) : mathLerp(st.bass, rawBass, 0.08);
-      st.mid = rawMid > st.mid ? mathLerp(st.mid, rawMid, 0.5) : mathLerp(st.mid, rawMid, 0.1);
-      st.treb = rawTreb > st.treb ? mathLerp(st.treb, rawTreb, 0.7) : mathLerp(st.treb, rawTreb, 0.15);
+      // Natural acoustic attack/release smoothing
+      const bassRate = targetBass > smoothBass ? 14.0 : 5.5;
+      const midRate = targetMid > smoothMid ? 8.5 : 4.0;
+      const trebleRate = targetTreble > smoothTreble ? 16.0 : 6.5;
 
-      const targetPaletteHex = MOOD_PALETTES[moodKey] || MOOD_PALETTES.active;
-      const targetPaletteRgb: [[number, number, number], [number, number, number], [number, number, number]] = [
-        hexToRgb(targetPaletteHex[0]),
-        hexToRgb(targetPaletteHex[1]),
-        hexToRgb(targetPaletteHex[2]),
-      ];
+      smoothBass += (targetBass - smoothBass) * (1 - Math.exp(-dt * bassRate));
+      smoothMid += (targetMid - smoothMid) * (1 - Math.exp(-dt * midRate));
+      smoothTreble += (targetTreble - smoothTreble) * (1 - Math.exp(-dt * trebleRate));
+      playBlend += ((isPlayingRef.current ? 1 : 0) - playBlend) * (1 - Math.exp(-dt * 3.5));
 
-      st.colors[0] = lerpColor(st.colors[0], targetPaletteRgb[0], 0.05);
-      st.colors[1] = lerpColor(st.colors[1], targetPaletteRgb[1], 0.05);
-      st.colors[2] = lerpColor(st.colors[2], targetPaletteRgb[2], 0.05);
+      // Smooth palette color interpolation
+      const targetPal = targetPaletteRef.current;
+      const colorLerp = 1 - Math.exp(-dt * 2.6);
+      for (let i = 0; i < 3; i++) {
+        curCol1[i] += (targetPal.c1[i] - curCol1[i]) * colorLerp;
+        curCol2[i] += (targetPal.c2[i] - curCol2[i]) * colorLerp;
+        curCol3[i] += (targetPal.c3[i] - curCol3[i]) * colorLerp;
+      }
 
-      gl.uniform1f(uTime, time);
-      gl.uniform1f(uBass, st.bass);
-      gl.uniform1f(uMid, st.mid);
-      gl.uniform1f(uTreb, st.treb);
-
-      gl.uniform3f(uColor1, st.colors[0][0], st.colors[0][1], st.colors[0][2]);
-      gl.uniform3f(uColor2, st.colors[1][0], st.colors[1][1], st.colors[1][2]);
-      gl.uniform3f(uColor3, st.colors[2][0], st.colors[2][1], st.colors[2][2]);
+      // Strictly forward-advancing phases (zero back-and-forth oscillation)
+      flowPhase += dt * (0.20 + playBlend * 0.22 + smoothMid * 0.42 + smoothBass * 0.18);
+      breathPhase += dt * (0.72 + playBlend * 0.35);
+      ripplePhase += dt * (0.35 + playBlend * 0.50 + smoothBass * 1.15);
+      orbitPhase += dt * (0.14 + playBlend * 0.14 + smoothTreble * 0.28);
 
       gl.clearColor(0, 0, 0, 0);
       gl.clear(gl.COLOR_BUFFER_BIT);
+      gl.enable(gl.BLEND);
 
-      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-      animationId = requestAnimationFrame(render);
+      // Pass 1: Bioluminescent Silk Orb + Acoustic Diffraction Aura
+      gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+      gl.useProgram(orbProg);
+      gl.bindVertexArray(quadVAO);
+      gl.uniform2f(orbLoc.resolution, canvas.width, canvas.height);
+      gl.uniform1f(orbLoc.flowPhase, flowPhase);
+      gl.uniform1f(orbLoc.breathPhase, breathPhase);
+      gl.uniform1f(orbLoc.ripplePhase, ripplePhase);
+      gl.uniform1f(orbLoc.bass, smoothBass);
+      gl.uniform1f(orbLoc.mid, smoothMid);
+      gl.uniform1f(orbLoc.treble, smoothTreble);
+      gl.uniform1f(orbLoc.playBlend, playBlend);
+      gl.uniform3fv(orbLoc.col1, curCol1);
+      gl.uniform3fv(orbLoc.col2, curCol2);
+      gl.uniform3fv(orbLoc.col3, curCol3);
+      gl.drawArrays(gl.TRIANGLES, 0, 6);
+
+      // Pass 2: Additive Orbital Micro-Stardust
+      gl.blendFuncSeparate(gl.ONE, gl.ONE, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+      gl.useProgram(particleProg);
+      gl.bindVertexArray(particleVAO);
+      gl.uniform2f(partLoc.resolution, canvas.width, canvas.height);
+      gl.uniform1f(partLoc.orbitPhase, orbitPhase);
+      gl.uniform1f(partLoc.bass, smoothBass);
+      gl.uniform1f(partLoc.treble, smoothTreble);
+      gl.uniform1f(partLoc.dpr, currentDpr);
+      gl.uniform3fv(partLoc.col1, curCol1);
+      gl.uniform3fv(partLoc.col3, curCol3);
+      gl.drawArrays(gl.POINTS, 0, PARTICLE_COUNT);
+      gl.bindVertexArray(null);
+
+      rafId = requestAnimationFrame(render);
     };
 
-    render();
+    rafId = requestAnimationFrame(render);
 
     return () => {
-      window.removeEventListener('resize', handleResize);
-      cancelAnimationFrame(animationId);
-      gl.deleteProgram(program);
-      gl.deleteShader(vertexShader);
-      gl.deleteShader(fragmentShader);
-      gl.deleteBuffer(buffer);
+      cancelAnimationFrame(rafId);
+      resizeObserver.disconnect();
+      canvas.removeEventListener('webglcontextlost', onContextLost);
+      gl.deleteBuffer(quadBuf);
+      gl.deleteBuffer(partBuf);
+      gl.deleteVertexArray(quadVAO);
+      gl.deleteVertexArray(particleVAO);
+      gl.deleteProgram(orbProg);
+      gl.deleteProgram(particleProg);
     };
-  }, [moodKey]);
+  }, []);
 
   return (
-    <div className="relative flex items-center justify-center w-full max-w-[280px] sm:max-w-[340px] aspect-square mx-auto my-1">
-      {/* WebGL Canvas */}
+    <div
+      ref={containerRef}
+      className="relative w-full aspect-square max-w-[400px] sm:max-w-[480px] flex items-center justify-center select-none mx-auto overflow-visible"
+    >
       <canvas
         ref={canvasRef}
-        className="absolute inset-0 w-full h-full block mix-blend-screen pointer-events-none"
+        className="absolute inset-0 w-full h-full block pointer-events-none"
+        aria-hidden="true"
       />
 
-      {/* 
-        ИНВИЗИБЛ-КНОПКА НА ВЕСЬ ЭКРАН 
-        Иконка полностью пропадает во время воспроизведения, оставляя ядро чистым!
-      */}
-      <button
-        type="button"
-        onClick={onTogglePlay}
-        className="absolute inset-0 z-10 w-full h-full flex items-center justify-center group outline-none cursor-pointer"
-        aria-label={isPlaying ? 'Пауза' : 'Воспроизвести'}
-      >
-        <div
-          className={`
-            flex items-center justify-center 
-            w-16 h-16 rounded-full 
-            bg-black/30 backdrop-blur-md 
-            border border-white/10 
-            shadow-[0_10px_40px_rgba(0,0,0,0.4)]
-            transition-all duration-700 cubic-bezier(0.4,0,0.2,1)
-            group-hover:bg-white/10 group-hover:scale-110 group-hover:border-white/30 
-            group-active:scale-95 group-active:bg-white/20
-            ${
-              isPlaying
-                ? 'opacity-0 scale-90 group-hover:opacity-100 group-hover:scale-110'
-                : 'opacity-100 scale-100'
-            }
-          `}
+      <div className="relative z-10 flex items-center justify-center">
+        <span
+          className={`absolute -inset-1.5 rounded-full border border-white/25 pointer-events-none transition-opacity duration-500 ${
+            effectiveIsPlaying ? 'opacity-100 animate-pulse' : 'opacity-0'
+          }`}
+        />
+        <button
+          type="button"
+          onClick={onTogglePlay}
+          aria-label={effectiveIsPlaying ? 'Пауза' : 'Воспроизвести Мою Волну'}
+          className="relative w-[64px] h-[64px] rounded-full flex items-center justify-center cursor-pointer outline-none
+            bg-[#10131C]/45 backdrop-blur-xl border border-white/20
+            shadow-[0_12px_36px_rgba(0,0,0,0.55),inset_0_1px_1px_rgba(255,255,255,0.3)]
+            transition-all duration-200 ease-out
+            hover:scale-105 hover:border-white/40 active:scale-95
+            focus-visible:ring-2 focus-visible:ring-white/60"
         >
-          {isPlaying ? (
-            <Pause className="w-6 h-6 text-white fill-white/90 group-hover:fill-white transition-all" />
-          ) : (
-            <Play className="w-6 h-6 text-white fill-white/90 group-hover:fill-white transition-all ml-1" />
-          )}
-        </div>
-      </button>
+          {/* Play Icon */}
+          <svg
+            className={`w-6 h-6 ml-0.5 text-white transition-all duration-300 ease-out absolute ${
+              effectiveIsPlaying ? 'opacity-0 scale-75' : 'opacity-100 scale-100'
+            }`}
+            viewBox="0 0 24 24"
+            fill="currentColor"
+          >
+            <path d="M7.5 5.25c0-.86.94-1.39 1.68-.95l10.5 6.25a1.1 1.1 0 010 1.9l-10.5 6.25c-.74.44-1.68-.09-1.68-.95V5.25z" />
+          </svg>
+          {/* Pause Icon */}
+          <svg
+            className={`w-6 h-6 text-white transition-all duration-300 ease-out absolute ${
+              effectiveIsPlaying ? 'opacity-100 scale-100' : 'opacity-0 scale-75'
+            }`}
+            viewBox="0 0 24 24"
+            fill="currentColor"
+          >
+            <rect x="6.5" y="5" width="3.8" height="14" rx="1.6" />
+            <rect x="13.7" y="5" width="3.8" height="14" rx="1.6" />
+          </svg>
+        </button>
+      </div>
     </div>
   );
 };
+
+export default WaveVisualizerOrb;

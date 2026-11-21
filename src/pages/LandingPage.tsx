@@ -608,7 +608,7 @@ export function LandingPage({ onSelectTab }: LandingPageProps) {
             </div>
 
             {/* Desktop Acoustic Fluid Orb */}
-            <div className="w-56 h-56 shrink-0 relative flex items-center justify-center z-10">
+            <div className="w-72 h-72 lg:w-84 lg:h-84 shrink-0 relative flex items-center justify-center z-10 overflow-visible">
               <WaveVisualizerOrb
                 onTogglePlay={() => {
                   if (waveMode && isPlaying) {
