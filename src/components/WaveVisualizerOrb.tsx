@@ -21,7 +21,11 @@ const hexToRgb = (hex: string): [number, number, number] => {
 };
 
 const lerp = (start: number, end: number, amt: number) => (1 - amt) * start + amt * end;
-const lerpColor = (c1: [number, number, number], c2: [number, number, number], amt: number): [number, number, number] => [
+const lerpColor = (
+  c1: [number, number, number],
+  c2: [number, number, number],
+  amt: number
+): [number, number, number] => [
   lerp(c1[0], c2[0], amt),
   lerp(c1[1], c2[1], amt),
   lerp(c1[2], c2[2], amt),
@@ -51,6 +55,7 @@ const vertexShaderSource = `
   }
 `;
 
+// Версия 5.1: Стабильное Био-Ядро (Safe Dense Bio-Core)
 const fragmentShaderSource = `
   #ifdef GL_FRAGMENT_PRECISION_HIGH
   precision highp float;
@@ -68,9 +73,8 @@ const fragmentShaderSource = `
   uniform vec3 u_color1;
   uniform vec3 u_color2;
   uniform vec3 u_color3;
-  uniform vec3 u_bg;
 
-  // 2D Simplex Noise для органичной текучести
+  // 2D Simplex Noise
   vec3 permute(vec3 x) { return mod(((x*34.0)+1.0)*x, 289.0); }
   float snoise(vec2 v){
       const vec4 C = vec4(0.211324865405187, 0.366025403784439, -0.577350269189626, 0.024390243902439);
@@ -95,76 +99,79 @@ const fragmentShaderSource = `
   }
 
   void main() {
-      // Нормализуем координаты (-1 до 1 с учетом пропорций)
       vec2 uv = (gl_FragCoord.xy - 0.5 * u_resolution.xy) / min(u_resolution.x, u_resolution.y);
-      uv *= 1.25; 
+      uv *= 1.5; // Отдаляем камеру, чтобы ядру было куда раздуваться
       
-      float radiusDist = length(uv);
-      float time = u_time * 0.5;
+      float dist = length(uv);
+      // БЕЗОПАСНАЯ НОРМАЛИЗАЦИЯ (чтобы избежать деления на ноль в центре)
+      vec2 dir = dist > 0.001 ? uv / dist : vec2(0.0); 
+      float angle = atan(uv.y, uv.x);
+      float time = u_time * 0.7;
       
-      // 1. Органическая деформация пространства (Domain Warping)
+      // 1. АГРЕССИВНАЯ ДЕФОРМАЦИЯ (Звук физически рвет ткань)
       vec2 warpUV = uv;
-      warpUV.x += snoise(vec2(uv.x * 3.0 + time, uv.y * 3.0)) * 0.08 * (1.0 + u_bass * 4.0);
-      warpUV.y += snoise(vec2(uv.x * 3.0, uv.y * 3.0 - time)) * 0.08 * (1.0 + u_bass * 4.0);
       
-      warpUV += normalize(uv) * sin(radiusDist * 25.0 - u_time * 6.0) * 0.015 * u_mid;
-      warpUV += vec2(snoise(uv * 15.0 + time), snoise(uv * 15.0 - time)) * 0.008 * u_treb;
+      // Базовое мягкое кипение жидкости
+      warpUV.x += snoise(vec2(uv.x * 2.5 + time * 0.5, uv.y * 2.5)) * 0.1;
+      warpUV.y += snoise(vec2(uv.x * 2.5, uv.y * 2.5 - time * 0.5)) * 0.1;
       
-      float baseR = 0.35;
-      float r = length(warpUV);
+      // Бас выталкивает куски плазмы наружу (взрывной эффект)
+      float beatWarp = snoise(vec2(uv.x * 3.0 - time, uv.y * 3.0 + time)) * (u_bass * 0.6);
+      warpUV += dir * beatWarp;
       
-      // 2. Иллюзия объема (3D нормали)
-      float thickness = smoothstep(baseR + 0.25, 0.0, r);
-      vec3 normal = normalize(vec3(warpUV.x, warpUV.y, thickness * 1.5));
+      // Высокие частоты создают электрические "заусенцы" и искры
+      float spikeNoise = snoise(vec2(angle * 5.0, time * 3.0));
+      float spikes = spikeNoise * (u_treb * 0.3);
       
-      // 3. Внутренняя плазма (жидкий градиент)
-      vec2 fluidUV = normal.xy * 2.0;
-      vec2 q = vec2(snoise(fluidUV + time), snoise(fluidUV + vec2(5.2) - time));
-      vec2 warp = vec2(snoise(fluidUV + q * 2.0 + u_mid * 0.5), snoise(fluidUV + q * 2.0 + vec2(8.3)));
-      float fluid = snoise(fluidUV * 1.5 + warp * 3.0 - time * 1.5);
+      float r = length(warpUV) - spikes;
       
-      // 4. Освещение и блендинг
-      vec3 coreColor = mix(u_color1, u_color2, fluid * 0.5 + 0.5);
-      coreColor = mix(coreColor, u_color3, warp.x * 0.5 + 0.5);
+      // 2. ФОРМИРОВАНИЕ ПЛОТНОГО ЯДРА
+      float coreRadius = 0.22 + (u_bass * 0.15); // На басах ядро раздувается
       
-      float density = smoothstep(baseR + 0.15, baseR - 0.15, r);
-      vec3 color = vec3(0.0);
+      // Само тело (плотный сгусток)
+      float body = smoothstep(coreRadius + 0.1, coreRadius - 0.12, r);
       
-      // Аура
-      float aura = smoothstep(baseR + 0.8, baseR - 0.1, radiusDist);
-      vec3 auraColor = mix(u_color3, u_color1, snoise(uv * 2.0 + time) * 0.5 + 0.5);
-      color += auraColor * aura * 0.5 * (1.0 + u_bass * 1.8);
+      // Раскаленный центр
+      float hotCore = smoothstep(coreRadius * 0.6, 0.0, r);
       
-      // Тело жидкости
-      vec3 fluidBody = coreColor * density;
+      // 3. ВНУТРЕННИЕ ВОДОВОРОТЫ ЦВЕТА
+      vec2 fluidUV = warpUV * 3.0;
+      float colorMix1 = snoise(fluidUV + time * 0.8) * 0.5 + 0.5;
+      float colorMix2 = snoise(fluidUV * 1.5 - time * 1.2) * 0.5 + 0.5;
       
-      // Свечение ядра на битах
-      float coreGlow = smoothstep(baseR, 0.0, r);
-      fluidBody += u_color1 * pow(coreGlow, 2.5) * (u_bass * 2.5);
+      vec3 baseColor = mix(u_color1, u_color2, colorMix1);
+      baseColor = mix(baseColor, u_color3, colorMix2);
       
-      // Хроматическая аберрация по краю
-      float fresnel = 1.0 - max(0.0, dot(normal, vec3(0.0, 0.0, 1.0)));
-      fresnel = pow(fresnel, 2.5);
+      vec3 finalColor = vec3(0.0);
       
-      vec3 rim = vec3(
-          smoothstep(0.3, 0.9, fresnel + fluid * 0.15),
-          smoothstep(0.4, 1.0, fresnel),
-          smoothstep(0.5, 1.1, fresnel - fluid * 0.15)
-      );
-      fluidBody += rim * mix(u_color2, u_color3, 0.5) * density * (1.0 + u_treb * 3.0);
+      // 4. КОМПОЗИТИНГ (СБОРКА)
+      // Внешняя мягкая аура
+      float aura = smoothstep(coreRadius + 0.7, coreRadius, dist);
+      finalColor += mix(u_color1, u_color3, 0.5) * aura * 0.3 * (1.0 + u_bass);
       
-      // Блик от света
-      vec3 lightDir = normalize(vec3(0.5, 0.8, 1.0));
-      float spec = pow(max(0.0, dot(reflect(-lightDir, normal), vec3(0.0, 0.0, 1.0))), 32.0);
-      fluidBody += spec * vec3(1.0) * density * 0.8;
+      // Оптический объем для самого тела (Фейковые нормали/Стекло)
+      vec3 bodyColor = baseColor * body;
+      float thickness = smoothstep(coreRadius + 0.15, 0.0, r);
+      // БЕЗОПАСНАЯ НОРМАЛИЗАЦИЯ
+      vec3 normal = normalize(vec3(warpUV.x, warpUV.y, thickness + 0.001)); 
       
-      color = mix(color, color + fluidBody, density);
+      // Fresnel (преломление света по краям сгустка)
+      float fresnel = pow(1.0 - max(0.0, dot(normal, vec3(0.0, 0.0, 1.0))), 2.5);
+      bodyColor += mix(u_color2, vec3(1.0), 0.3) * fresnel * body * (0.5 + u_treb * 1.5);
       
-      // Мягкая виньетка по краям холста
-      color *= smoothstep(0.65, 0.25, radiusDist);
-      color = pow(color, vec3(0.85)); 
+      // Внутренняя энергия
+      bodyColor += u_color1 * hotCore * (0.2 + u_bass * 1.8);
       
-      gl_FragColor = vec4(color, 1.0);
+      // Смешиваем тело с аурой
+      finalColor = mix(finalColor, finalColor + bodyColor, body);
+      
+      // Мягкое растворение к краям (без рамок)
+      finalColor *= smoothstep(1.0, 0.35, dist);
+      
+      // Сочность
+      finalColor = pow(finalColor, vec3(0.85));
+      
+      gl_FragColor = vec4(finalColor, 1.0);
   }
 `;
 
@@ -177,7 +184,6 @@ export const WaveVisualizerOrb: React.FC<WaveVisualizerOrbProps> = ({ onTogglePl
     isPlayingRef.current = isPlaying;
   }, [isPlaying]);
 
-  // Вычисляем ключ настроения для динамической палитры
   const moodKey =
     waveSettings?.mood ||
     waveSettings?.activity ||
@@ -188,7 +194,7 @@ export const WaveVisualizerOrb: React.FC<WaveVisualizerOrbProps> = ({ onTogglePl
     bass: number;
     mid: number;
     treb: number;
-    colors: [ [number, number, number], [number, number, number], [number, number, number] ];
+    colors: [[number, number, number], [number, number, number], [number, number, number]];
   }>({
     bass: 0,
     mid: 0,
@@ -204,9 +210,9 @@ export const WaveVisualizerOrb: React.FC<WaveVisualizerOrbProps> = ({ onTogglePl
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const gl = canvas.getContext('webgl');
+    const gl = canvas.getContext('webgl', { alpha: true });
     if (!gl) {
-      console.warn('WebGL not supported, falling back to 2D');
+      console.warn('WebGL is not supported');
       return;
     }
 
@@ -240,7 +246,6 @@ export const WaveVisualizerOrb: React.FC<WaveVisualizerOrbProps> = ({ onTogglePl
 
     gl.useProgram(program);
 
-    // Quad геометрия
     const vertices = new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]);
     const buffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
@@ -250,7 +255,6 @@ export const WaveVisualizerOrb: React.FC<WaveVisualizerOrbProps> = ({ onTogglePl
     gl.enableVertexAttribArray(positionLoc);
     gl.vertexAttribPointer(positionLoc, 2, gl.FLOAT, false, 0, 0);
 
-    // Uniforms
     const uResolution = gl.getUniformLocation(program, 'u_resolution');
     const uTime = gl.getUniformLocation(program, 'u_time');
     const uBass = gl.getUniformLocation(program, 'u_bass');
@@ -259,10 +263,6 @@ export const WaveVisualizerOrb: React.FC<WaveVisualizerOrbProps> = ({ onTogglePl
     const uColor1 = gl.getUniformLocation(program, 'u_color1');
     const uColor2 = gl.getUniformLocation(program, 'u_color2');
     const uColor3 = gl.getUniformLocation(program, 'u_color3');
-    const uBg = gl.getUniformLocation(program, 'u_bg');
-
-    const bgColor = hexToRgb('#10131C');
-    gl.uniform3f(uBg, bgColor[0], bgColor[1], bgColor[2]);
 
     let animationId: number;
     const startTime = performance.now();
@@ -283,46 +283,43 @@ export const WaveVisualizerOrb: React.FC<WaveVisualizerOrbProps> = ({ onTogglePl
     window.addEventListener('resize', handleResize);
     handleResize();
 
-    // Render loop
+    const mathLerp = (a: number, b: number, t: number) => a + (b - a) * t;
+
     const render = () => {
       const time = (performance.now() - startTime) * 0.001;
-
-      // 1. Извлекаем и усредняем аудиоданные
       const freqData = audioVisualizer.getFrequencyData();
+
       let rawBass = 0;
       let rawMid = 0;
       let rawTreb = 0;
 
       if (isPlayingRef.current && freqData && freqData.length > 0) {
-        const bassCount = Math.min(10, freqData.length);
-        for (let i = 0; i < bassCount; i++) rawBass += freqData[i] || 0;
+        const bLen = Math.min(10, freqData.length);
+        for (let i = 0; i < bLen; i++) rawBass += freqData[i] || 0;
+        const mLen = Math.min(60, freqData.length);
+        for (let i = bLen; i < mLen; i++) rawMid += freqData[i] || 0;
+        const tLen = Math.min(128, freqData.length);
+        for (let i = mLen; i < tLen; i++) rawTreb += freqData[i] || 0;
 
-        const midCount = Math.min(60, freqData.length);
-        for (let i = bassCount; i < midCount; i++) rawMid += freqData[i] || 0;
-
-        const trebCount = Math.min(128, freqData.length);
-        for (let i = midCount; i < trebCount; i++) rawTreb += freqData[i] || 0;
-
-        rawBass = Math.pow((rawBass / Math.max(1, bassCount)) / 255.0, 1.5) * 1.8;
-        rawMid = ((rawMid / Math.max(1, midCount - bassCount)) / 255.0) * 1.2;
-        rawTreb = ((rawTreb / Math.max(1, trebCount - midCount)) / 255.0) * 2.0;
+        rawBass = Math.pow((rawBass / Math.max(1, bLen)) / 255.0, 1.8) * 1.5;
+        rawMid = Math.pow((rawMid / Math.max(1, mLen - bLen)) / 255.0, 1.2) * 1.2;
+        rawTreb = Math.pow((rawTreb / Math.max(1, tLen - mLen)) / 255.0, 1.5) * 1.5;
       } else {
         // Органическое дыхание в состоянии покоя
-        const breathTime = time * 1.8;
-        rawBass = (Math.sin(breathTime) * 0.5 + 0.5) * 0.12;
-        rawMid = (Math.cos(breathTime * 1.2) * 0.5 + 0.5) * 0.08;
-        rawTreb = 0.04;
+        const breath = time * 1.5;
+        rawBass = (Math.sin(breath) * 0.5 + 0.5) * 0.14;
+        rawMid = (Math.cos(breath * 1.2) * 0.5 + 0.5) * 0.09;
+        rawTreb = 0.05;
       }
 
-      // 2. Fast attack / Slow release
       const st = stateRef.current;
-      st.bass = rawBass > st.bass ? lerp(st.bass, rawBass, 0.4) : lerp(st.bass, rawBass, 0.06);
-      st.mid = rawMid > st.mid ? lerp(st.mid, rawMid, 0.3) : lerp(st.mid, rawMid, 0.08);
-      st.treb = rawTreb > st.treb ? lerp(st.treb, rawTreb, 0.5) : lerp(st.treb, rawTreb, 0.08);
+      // Очень резкий отклик на удар (attack), плавное затухание (release)
+      st.bass = rawBass > st.bass ? mathLerp(st.bass, rawBass, 0.6) : mathLerp(st.bass, rawBass, 0.08);
+      st.mid = rawMid > st.mid ? mathLerp(st.mid, rawMid, 0.5) : mathLerp(st.mid, rawMid, 0.1);
+      st.treb = rawTreb > st.treb ? mathLerp(st.treb, rawTreb, 0.7) : mathLerp(st.treb, rawTreb, 0.15);
 
-      // 3. Плавный цветовой переход
       const targetPaletteHex = MOOD_PALETTES[moodKey] || MOOD_PALETTES.active;
-      const targetPaletteRgb: [ [number, number, number], [number, number, number], [number, number, number] ] = [
+      const targetPaletteRgb: [[number, number, number], [number, number, number], [number, number, number]] = [
         hexToRgb(targetPaletteHex[0]),
         hexToRgb(targetPaletteHex[1]),
         hexToRgb(targetPaletteHex[2]),
@@ -332,7 +329,6 @@ export const WaveVisualizerOrb: React.FC<WaveVisualizerOrbProps> = ({ onTogglePl
       st.colors[1] = lerpColor(st.colors[1], targetPaletteRgb[1], 0.05);
       st.colors[2] = lerpColor(st.colors[2], targetPaletteRgb[2], 0.05);
 
-      // 4. Uniforms
       gl.uniform1f(uTime, time);
       gl.uniform1f(uBass, st.bass);
       gl.uniform1f(uMid, st.mid);
@@ -342,9 +338,10 @@ export const WaveVisualizerOrb: React.FC<WaveVisualizerOrbProps> = ({ onTogglePl
       gl.uniform3f(uColor2, st.colors[1][0], st.colors[1][1], st.colors[1][2]);
       gl.uniform3f(uColor3, st.colors[2][0], st.colors[2][1], st.colors[2][2]);
 
-      // 5. Отрисовка
-      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+      gl.clearColor(0, 0, 0, 0);
+      gl.clear(gl.COLOR_BUFFER_BIT);
 
+      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
       animationId = requestAnimationFrame(render);
     };
 
@@ -362,13 +359,11 @@ export const WaveVisualizerOrb: React.FC<WaveVisualizerOrbProps> = ({ onTogglePl
 
   return (
     <div className="relative flex items-center justify-center w-full max-w-[280px] sm:max-w-[340px] aspect-square mx-auto my-1">
-      {/* WebGL Canvas с аппаратным микшированием экрана */}
       <canvas
         ref={canvasRef}
         className="absolute inset-0 w-full h-full block mix-blend-screen pointer-events-none"
       />
 
-      {/* Интерактивная кнопка управления поверх сферы */}
       <button
         type="button"
         onClick={onTogglePlay}
@@ -376,22 +371,22 @@ export const WaveVisualizerOrb: React.FC<WaveVisualizerOrbProps> = ({ onTogglePl
           relative z-10 
           flex items-center justify-center 
           w-16 h-16 rounded-full 
-          bg-dark-surface/60 backdrop-blur-2xl 
-          border border-white/15 
-          shadow-[0_10px_40px_rgba(0,0,0,0.7),inset_0_0_20px_rgba(255,255,255,0.12)]
-          transition-all duration-300
-          hover:scale-105 hover:border-white/30 hover:shadow-[0_10px_50px_rgba(255,59,92,0.25)]
-          active:scale-95 active:bg-dark-surface/80
+          bg-black/40 backdrop-blur-2xl 
+          border border-white/10 
+          shadow-[0_10px_40px_rgba(0,0,0,0.6),inset_0_0_20px_rgba(255,255,255,0.15)]
+          transition-all duration-500 cubic-bezier(0.4,0,0.2,1)
+          hover:bg-white/10 hover:scale-110 hover:border-white/30 hover:shadow-[0_10px_50px_rgba(255,59,92,0.2)]
+          active:scale-95 active:bg-white/20
           group overflow-hidden
         "
         aria-label={isPlaying ? 'Пауза' : 'Воспроизвести'}
       >
-        <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-white/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+        <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-white/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
         {isPlaying ? (
-          <Pause className="w-6 h-6 text-white fill-white transition-all" />
+          <Pause className="w-6 h-6 text-white fill-white/90 group-hover:fill-white transition-all" />
         ) : (
-          <Play className="w-6 h-6 text-white fill-white transition-all ml-0.5" />
+          <Play className="w-6 h-6 text-white fill-white/90 group-hover:fill-white transition-all ml-1" />
         )}
       </button>
     </div>
