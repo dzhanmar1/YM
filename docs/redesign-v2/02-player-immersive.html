@@ -1,0 +1,277 @@
+<!DOCTYPE html><html lang="ru" class="dark"><head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>v2 Плеер — Иммерсивный | YM Aura</title>
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <script id="tailwind-config" data-stitch-original-src="7f9ed0ab6f023f8f===../../tailwind.config.js">/** @type {import('tailwindcss').Config} */
+globalThis.tailwind = globalThis.tailwind || {};
+globalThis.tailwind.config = {
+  darkMode: 'class',
+  theme: {
+    extend: {
+      colors: {
+        'accent': '#FF3B5C',
+        'muted': '#9EA3B8',
+        'light-primary': '#BA0035',
+        'light-on-primary': '#FFFFFF',
+        'light-primary-container': '#E12149',
+        'light-on-primary-container': '#FFFBFF',
+        'light-secondary': '#A63744',
+        'light-on-secondary': '#FFFFFF',
+        'light-secondary-container': '#FF7984',
+        'light-on-secondary-container': '#740E22',
+        'light-tertiary': '#006A43',
+        'light-on-tertiary': '#FFFFFF',
+        'light-tertiary-container': '#008656',
+        'light-on-tertiary-container': '#F6FFF6',
+        'light-error': '#BA1A1A',
+        'light-on-error': '#FFFFFF',
+        'light-background': '#FAF8FF',
+        'light-on-background': '#181B24',
+        'light-surface': '#FAF8FF',
+        'light-surface-container-lowest': '#FFFFFF',
+        'light-surface-container-low': '#F2F3FF',
+        'light-surface-container': '#ECEDFA',
+        'light-surface-container-high': '#E6E7F4',
+        'light-surface-container-highest': '#E0E2EF',
+        'light-on-surface': '#181B24',
+        'light-surface-variant': '#E6E7F4',
+        'light-on-surface-variant': '#4A4E5E',
+        'light-outline': '#747782',
+        'light-outline-variant': '#C4C6D2',
+        'dark-primary': '#FFB3B6',
+        'dark-on-primary': '#68001A',
+        'dark-primary-container': '#FF5168',
+        'dark-on-primary-container': '#4D0011',
+        'dark-secondary': '#FFB3B6',
+        'dark-on-secondary': '#67021A',
+        'dark-secondary-container': '#8A2130',
+        'dark-on-secondary-container': '#FFDADA',
+        'dark-tertiary': '#62DDA0',
+        'dark-on-tertiary': '#003822',
+        'dark-tertiary-container': '#18A56D',
+        'dark-on-tertiary-container': '#002917',
+        'dark-error': '#FFB4AB',
+        'dark-on-error': '#690005',
+        'dark-background': '#10131C',
+        'dark-on-background': '#E0E2EF',
+        'dark-surface': '#10131C',
+        'dark-surface-container-lowest': '#0B0E17',
+        'dark-surface-container-low': '#181B24',
+        'dark-surface-container': '#1C1F29',
+        'dark-surface-container-high': '#272A33',
+        'dark-surface-container-highest': '#32343E',
+        'dark-on-surface': '#E0E2EF',
+        'dark-surface-variant': '#272A33',
+        'dark-on-surface-variant': '#A9ABB7',
+        'dark-outline': '#747782',
+        'dark-outline-variant': '#2D303A',
+      },
+      borderRadius: {
+        'sm': '8px',
+        'DEFAULT': '12px',
+        'md': '16px',
+        'lg': '20px',
+        'xl': '24px',
+        'full': '9999px',
+      },
+      spacing: {
+        'gutter-xs': '4px',
+        'gutter-sm': '8px',
+        'gutter-md': '12px',
+        'gutter-lg': '16px',
+        'gutter-xl': '24px',
+        'section': '32px',
+        'page-margin': '20px',
+      },
+      fontFamily: {
+        'display': ['"Manrope"', 'sans-serif'],
+        'headline': ['"Manrope"', 'sans-serif'],
+        'title': ['"Inter"', 'sans-serif'],
+        'body': ['"Inter"', 'sans-serif'],
+        'label': ['"Inter"', 'sans-serif'],
+        'mono': ['"JetBrains Mono"', 'monospace'],
+      },
+      fontSize: {
+        'display-lg': ['36px', { lineHeight: '44px', letterSpacing: '-0.5px', fontWeight: '700' }],
+        'display-lg-mobile': ['28px', { lineHeight: '34px', letterSpacing: '-0.4px', fontWeight: '700' }],
+        'headline-lg': ['26px', { lineHeight: '32px', letterSpacing: '-0.3px', fontWeight: '700' }],
+        'headline-md': ['20px', { lineHeight: '26px', letterSpacing: '-0.2px', fontWeight: '700' }],
+        'title-lg': ['18px', { lineHeight: '24px', letterSpacing: '-0.1px', fontWeight: '600' }],
+        'title-md': ['16px', { lineHeight: '22px', letterSpacing: '0px', fontWeight: '600' }],
+        'body-md': ['14px', { lineHeight: '20px', letterSpacing: '0px', fontWeight: '400' }],
+        'body-sm': ['13px', { lineHeight: '18px', letterSpacing: '0px', fontWeight: '400' }],
+        'label-lg': ['14px', { lineHeight: '20px', letterSpacing: '0px', fontWeight: '600' }],
+        'label-md': ['12px', { lineHeight: '16px', letterSpacing: '0.1px', fontWeight: '500' }],
+        'label-sm': ['11px', { lineHeight: '14px', letterSpacing: '0.2px', fontWeight: '500' }],
+        'mono-sm': ['12px', { lineHeight: '16px', letterSpacing: '0px', fontWeight: '500' }],
+      },
+      transitionDuration: {
+        'state-change': '120ms',
+        'surface-enter': '260ms',
+        'surface-exit': '180ms',
+      },
+      transitionDelay: {
+        'state-change': '0ms',
+        'surface-enter': '0ms',
+        'surface-exit': '0ms',
+      },
+      transitionTimingFunction: {
+        'state-change': 'ease-out',
+        'surface-enter': 'cubic-bezier(0.2, 0, 0, 1)',
+        'surface-exit': 'cubic-bezier(0.3, 0, 1, 1)',
+      },
+    },
+  },
+};
+if (typeof module !== 'undefined') module.exports = globalThis.tailwind.config;
+</script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@500&amp;family=Manrope:wght@600;700;800&amp;display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=block" rel="stylesheet">
+  <style>
+    .material-symbols-outlined { display: inline-block; width: 1em; height: 1em; line-height: 1 !important; box-sizing: content-box; overflow: hidden; white-space: nowrap; direction: ltr; vertical-align: middle; }
+  </style>
+</head>
+<body class="bg-light-surface dark:bg-dark-surface text-light-on-surface dark:text-dark-on-surface antialiased selection:bg-accent selection:text-light-on-primary">
+  <div class="min-h-screen w-full max-w-md mx-auto flex flex-col justify-between relative overflow-hidden px-page-margin pt-gutter-md pb-gutter-xl">
+
+    <!-- Ambient Cover Glow -->
+    <div class="pointer-events-none absolute -top-20 left-1/2 -translate-x-1/2 w-96 h-96 rounded-full bg-accent opacity-15 blur-3xl"></div>
+
+    <!-- Minimal Top: Swipe-down Handle + Output Pill -->
+    <header class="relative z-10 flex flex-col items-center gap-gutter-md">
+      <a href="../v2-home/HomeFlow.html" aria-label="Свернуть плеер свайпом" class="py-gutter-xs px-gutter-xl">
+        <span class="block w-10 h-1 rounded-full bg-light-outline-variant dark:bg-dark-outline-variant"></span>
+      </a>
+
+      <div class="w-full flex items-center justify-between">
+        <div class="inline-flex items-center gap-gutter-xs px-gutter-md py-gutter-xs rounded-full bg-light-surface-container-low dark:bg-dark-surface-container-low border border-light-outline-variant dark:border-dark-outline-variant">
+          <span class="material-symbols-outlined text-label-md text-accent" aria-hidden="true">headphones</span>
+          <span class="font-label text-label-sm text-light-on-surface dark:text-dark-on-surface" data-design-text-token="label-sm">AirPods Pro</span>
+        </div>
+
+        <span class="font-mono text-label-sm text-muted px-gutter-sm py-gutter-xs rounded-full bg-light-surface-container-low dark:bg-dark-surface-container-low border border-light-outline-variant dark:border-dark-outline-variant" data-design-text-token="label-sm">
+          LOSSLESS
+        </span>
+      </div>
+    </header>
+
+    <!-- Expansive Cover Artwork Stage -->
+    <main class="relative z-10 flex flex-col gap-gutter-lg my-auto py-gutter-md">
+      <div class="w-full aspect-square rounded-xl overflow-hidden bg-light-surface-container dark:bg-dark-surface-container shadow-2xl border border-light-outline-variant dark:border-dark-outline-variant">
+        <img src="https://lh3.googleusercontent.com/aida/ALJJyrCZYZHKwSLHuoOyJLuIhvkd7aDRDj06Fczhcd8WCT4F3hNd-VfMBci_nmnaCnvAJd-UK9UEhE0PhUyuqJxgsDEEcZKU3w1yYn3kfQYes0jjUoINLKkPj26zVbY32K8MHHl4QGu242VpNlGqYFZ8Ilhaq3WHwjebwyLei1xawhvYSn_TrsVONZHenMmoY1EW0UfJHSxfnqkarrABc1DEMUdw6ZktBFcYQCVt2FbCkkSdGGDJu8VuwCZOEs41YLDoE-WxxQ" alt="Обложка Lavender — Vacations" class="w-full h-full object-cover" data-stitch-original-src="0c2e9e5aea45120d===../../images/cover_lavender.jpg">
+      </div>
+
+      <!-- Track Title & Artist + Heart -->
+      <div class="flex items-center justify-between gap-gutter-md">
+        <div class="flex flex-col gap-gutter-xs min-w-0">
+          <h1 class="font-display text-headline-lg text-light-on-surface dark:text-dark-on-surface truncate" data-design-text-token="headline-lg">
+            Lavender
+          </h1>
+          <p class="font-body text-title-md text-muted truncate" data-design-text-token="title-md">
+            Vacations · Forever In Bloom
+          </p>
+        </div>
+
+        <button type="button" aria-label="Добавить в любимые" class="shrink-0 w-11 h-11 rounded-full bg-light-surface-container-low dark:bg-dark-surface-container-low border border-light-outline-variant dark:border-dark-outline-variant flex items-center justify-center text-accent active:scale-95 transition-transform duration-state-change">
+          <span class="material-symbols-outlined text-headline-md" style="font-variation-settings: &#39;FILL&#39; 1;" aria-hidden="true">favorite</span>
+        </button>
+      </div>
+
+      <!-- Integrated Live Lyrics Peek (Tap to expand!) -->
+      <a href="../v2-lyrics/LiveLyrics.html" class="rounded-lg bg-light-surface-container-low dark:bg-dark-surface-container-low border border-light-outline-variant dark:border-dark-outline-variant px-gutter-lg py-gutter-md flex items-center justify-between gap-gutter-md hover:bg-light-surface-container dark:hover:bg-dark-surface-container transition-colors duration-state-change">
+        <div class="flex flex-col gap-gutter-xs min-w-0">
+          <span class="font-label text-label-sm text-accent" data-design-text-token="label-sm">Текст сейчас</span>
+          <p class="font-headline text-body-md text-light-on-surface dark:text-dark-on-surface truncate" data-design-text-token="body-md">
+            I could illustrate all of my surroundings back to you
+          </p>
+        </div>
+        <span class="material-symbols-outlined text-title-lg text-muted shrink-0" aria-hidden="true">open_in_full</span>
+      </a>
+    </main>
+
+    <!-- Thumb-Zone Controls & Dynamic Waveform Scrubber -->
+    <footer class="relative z-10 flex flex-col gap-gutter-lg">
+
+      <!-- Dynamic Waveform Progress -->
+      <div class="flex flex-col gap-gutter-xs">
+        <div class="flex items-center justify-between gap-gutter-xs h-7 px-gutter-xs" aria-label="Прогресс трека">
+          <span class="w-1 h-3 rounded-full bg-accent"></span>
+          <span class="w-1 h-5 rounded-full bg-accent"></span>
+          <span class="w-1 h-4 rounded-full bg-accent"></span>
+          <span class="w-1 h-7 rounded-full bg-accent"></span>
+          <span class="w-1 h-5 rounded-full bg-accent"></span>
+          <span class="w-1 h-6 rounded-full bg-accent"></span>
+          <span class="w-1 h-3 rounded-full bg-accent"></span>
+          <span class="w-1 h-6 rounded-full bg-accent"></span>
+          <span class="w-1 h-4 rounded-full bg-accent"></span>
+          <span class="w-1 h-7 rounded-full bg-accent"></span>
+          <span class="w-1 h-5 rounded-full bg-light-on-surface dark:bg-dark-on-surface"></span>
+          <span class="w-1 h-3 rounded-full bg-light-surface-container-highest dark:bg-dark-surface-container-highest"></span>
+          <span class="w-1 h-6 rounded-full bg-light-surface-container-highest dark:bg-dark-surface-container-highest"></span>
+          <span class="w-1 h-4 rounded-full bg-light-surface-container-highest dark:bg-dark-surface-container-highest"></span>
+          <span class="w-1 h-5 rounded-full bg-light-surface-container-highest dark:bg-dark-surface-container-highest"></span>
+          <span class="w-1 h-3 rounded-full bg-light-surface-container-highest dark:bg-dark-surface-container-highest"></span>
+          <span class="w-1 h-6 rounded-full bg-light-surface-container-highest dark:bg-dark-surface-container-highest"></span>
+          <span class="w-1 h-4 rounded-full bg-light-surface-container-highest dark:bg-dark-surface-container-highest"></span>
+          <span class="w-1 h-5 rounded-full bg-light-surface-container-highest dark:bg-dark-surface-container-highest"></span>
+          <span class="w-1 h-3 rounded-full bg-light-surface-container-highest dark:bg-dark-surface-container-highest"></span>
+          <span class="w-1 h-4 rounded-full bg-light-surface-container-highest dark:bg-dark-surface-container-highest"></span>
+          <span class="w-1 h-2 rounded-full bg-light-surface-container-highest dark:bg-dark-surface-container-highest"></span>
+        </div>
+
+        <div class="flex items-center justify-between">
+          <span class="font-mono text-mono-sm text-muted tabular-nums" data-design-text-token="mono-sm">1:46</span>
+          <span class="font-mono text-mono-sm text-muted tabular-nums" data-design-text-token="mono-sm">3:49</span>
+        </div>
+      </div>
+
+      <!-- Primary Transport -->
+      <div class="flex items-center justify-between gap-gutter-md">
+        <button type="button" aria-label="Перемешать" class="w-11 h-11 rounded-full flex items-center justify-center text-muted hover:text-light-on-surface dark:hover:text-dark-on-surface">
+          <span class="material-symbols-outlined text-title-lg" aria-hidden="true">shuffle</span>
+        </button>
+
+        <button type="button" aria-label="Предыдущий трек" class="w-12 h-12 rounded-full flex items-center justify-center text-light-on-surface dark:text-dark-on-surface active:scale-95 transition-transform duration-state-change">
+          <span class="material-symbols-outlined text-display-lg-mobile" aria-hidden="true">skip_previous</span>
+        </button>
+
+        <button type="button" aria-label="Пауза или воспроизведение" class="w-20 h-14 rounded-full bg-light-on-surface dark:bg-dark-on-surface text-light-surface dark:text-dark-surface flex items-center justify-center shadow-xl active:scale-95 transition-transform duration-state-change">
+          <span class="material-symbols-outlined text-display-lg-mobile" style="font-variation-settings: &#39;FILL&#39; 1;" aria-hidden="true">pause</span>
+        </button>
+
+        <button type="button" aria-label="Следующий трек" class="w-12 h-12 rounded-full flex items-center justify-center text-light-on-surface dark:text-dark-on-surface active:scale-95 transition-transform duration-state-change">
+          <span class="material-symbols-outlined text-display-lg-mobile" aria-hidden="true">skip_next</span>
+        </button>
+
+        <button type="button" aria-label="Повтор" class="w-11 h-11 rounded-full flex items-center justify-center text-muted hover:text-light-on-surface dark:hover:text-dark-on-surface">
+          <span class="material-symbols-outlined text-title-lg" aria-hidden="true">repeat</span>
+        </button>
+      </div>
+
+      <!-- Thumb-Reachable Utility Strip (Moved from Top!) -->
+      <div class="grid grid-cols-4 gap-gutter-sm">
+        <button type="button" class="flex flex-col items-center gap-gutter-xs py-gutter-sm rounded-lg bg-light-surface-container-low dark:bg-dark-surface-container-low text-light-on-surface dark:text-dark-on-surface">
+          <span class="material-symbols-outlined text-title-md text-accent" aria-hidden="true">graphic_eq</span>
+          <span class="font-label text-label-sm" data-design-text-token="label-sm">Похожие</span>
+        </button>
+        <a href="../v2-lyrics/LiveLyrics.html" class="flex flex-col items-center gap-gutter-xs py-gutter-sm rounded-lg bg-light-surface-container-low dark:bg-dark-surface-container-low text-light-on-surface dark:text-dark-on-surface">
+          <span class="material-symbols-outlined text-title-md" aria-hidden="true">lyrics</span>
+          <span class="font-label text-label-sm" data-design-text-token="label-sm">Текст</span>
+        </a>
+        <button type="button" class="flex flex-col items-center gap-gutter-xs py-gutter-sm rounded-lg bg-light-surface-container-low dark:bg-dark-surface-container-low text-light-on-surface dark:text-dark-on-surface">
+          <span class="material-symbols-outlined text-title-md" aria-hidden="true">tune</span>
+          <span class="font-label text-label-sm" data-design-text-token="label-sm">Звук</span>
+        </button>
+        <button type="button" class="flex flex-col items-center gap-gutter-xs py-gutter-sm rounded-lg bg-light-surface-container-low dark:bg-dark-surface-container-low text-light-on-surface dark:text-dark-on-surface">
+          <span class="material-symbols-outlined text-title-md" aria-hidden="true">queue_music</span>
+          <span class="font-label text-label-sm" data-design-text-token="label-sm">Очередь</span>
+        </button>
+      </div>
+
+    </footer>
+
+  </div>
+
+
+</body></html>

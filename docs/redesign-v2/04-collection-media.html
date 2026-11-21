@@ -1,0 +1,389 @@
+<!DOCTYPE html><html lang="ru" class="dark"><head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>v2 Коллекция — Медиатека | YM Aura</title>
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <script id="tailwind-config" data-stitch-original-src="7f9ed0ab6f023f8f===../../tailwind.config.js">/** @type {import('tailwindcss').Config} */
+globalThis.tailwind = globalThis.tailwind || {};
+globalThis.tailwind.config = {
+  darkMode: 'class',
+  theme: {
+    extend: {
+      colors: {
+        'accent': '#FF3B5C',
+        'muted': '#9EA3B8',
+        'light-primary': '#BA0035',
+        'light-on-primary': '#FFFFFF',
+        'light-primary-container': '#E12149',
+        'light-on-primary-container': '#FFFBFF',
+        'light-secondary': '#A63744',
+        'light-on-secondary': '#FFFFFF',
+        'light-secondary-container': '#FF7984',
+        'light-on-secondary-container': '#740E22',
+        'light-tertiary': '#006A43',
+        'light-on-tertiary': '#FFFFFF',
+        'light-tertiary-container': '#008656',
+        'light-on-tertiary-container': '#F6FFF6',
+        'light-error': '#BA1A1A',
+        'light-on-error': '#FFFFFF',
+        'light-background': '#FAF8FF',
+        'light-on-background': '#181B24',
+        'light-surface': '#FAF8FF',
+        'light-surface-container-lowest': '#FFFFFF',
+        'light-surface-container-low': '#F2F3FF',
+        'light-surface-container': '#ECEDFA',
+        'light-surface-container-high': '#E6E7F4',
+        'light-surface-container-highest': '#E0E2EF',
+        'light-on-surface': '#181B24',
+        'light-surface-variant': '#E6E7F4',
+        'light-on-surface-variant': '#4A4E5E',
+        'light-outline': '#747782',
+        'light-outline-variant': '#C4C6D2',
+        'dark-primary': '#FFB3B6',
+        'dark-on-primary': '#68001A',
+        'dark-primary-container': '#FF5168',
+        'dark-on-primary-container': '#4D0011',
+        'dark-secondary': '#FFB3B6',
+        'dark-on-secondary': '#67021A',
+        'dark-secondary-container': '#8A2130',
+        'dark-on-secondary-container': '#FFDADA',
+        'dark-tertiary': '#62DDA0',
+        'dark-on-tertiary': '#003822',
+        'dark-tertiary-container': '#18A56D',
+        'dark-on-tertiary-container': '#002917',
+        'dark-error': '#FFB4AB',
+        'dark-on-error': '#690005',
+        'dark-background': '#10131C',
+        'dark-on-background': '#E0E2EF',
+        'dark-surface': '#10131C',
+        'dark-surface-container-lowest': '#0B0E17',
+        'dark-surface-container-low': '#181B24',
+        'dark-surface-container': '#1C1F29',
+        'dark-surface-container-high': '#272A33',
+        'dark-surface-container-highest': '#32343E',
+        'dark-on-surface': '#E0E2EF',
+        'dark-surface-variant': '#272A33',
+        'dark-on-surface-variant': '#A9ABB7',
+        'dark-outline': '#747782',
+        'dark-outline-variant': '#2D303A',
+      },
+      borderRadius: {
+        'sm': '8px',
+        'DEFAULT': '12px',
+        'md': '16px',
+        'lg': '20px',
+        'xl': '24px',
+        'full': '9999px',
+      },
+      spacing: {
+        'gutter-xs': '4px',
+        'gutter-sm': '8px',
+        'gutter-md': '12px',
+        'gutter-lg': '16px',
+        'gutter-xl': '24px',
+        'section': '32px',
+        'page-margin': '20px',
+      },
+      fontFamily: {
+        'display': ['"Manrope"', 'sans-serif'],
+        'headline': ['"Manrope"', 'sans-serif'],
+        'title': ['"Inter"', 'sans-serif'],
+        'body': ['"Inter"', 'sans-serif'],
+        'label': ['"Inter"', 'sans-serif'],
+        'mono': ['"JetBrains Mono"', 'monospace'],
+      },
+      fontSize: {
+        'display-lg': ['36px', { lineHeight: '44px', letterSpacing: '-0.5px', fontWeight: '700' }],
+        'display-lg-mobile': ['28px', { lineHeight: '34px', letterSpacing: '-0.4px', fontWeight: '700' }],
+        'headline-lg': ['26px', { lineHeight: '32px', letterSpacing: '-0.3px', fontWeight: '700' }],
+        'headline-md': ['20px', { lineHeight: '26px', letterSpacing: '-0.2px', fontWeight: '700' }],
+        'title-lg': ['18px', { lineHeight: '24px', letterSpacing: '-0.1px', fontWeight: '600' }],
+        'title-md': ['16px', { lineHeight: '22px', letterSpacing: '0px', fontWeight: '600' }],
+        'body-md': ['14px', { lineHeight: '20px', letterSpacing: '0px', fontWeight: '400' }],
+        'body-sm': ['13px', { lineHeight: '18px', letterSpacing: '0px', fontWeight: '400' }],
+        'label-lg': ['14px', { lineHeight: '20px', letterSpacing: '0px', fontWeight: '600' }],
+        'label-md': ['12px', { lineHeight: '16px', letterSpacing: '0.1px', fontWeight: '500' }],
+        'label-sm': ['11px', { lineHeight: '14px', letterSpacing: '0.2px', fontWeight: '500' }],
+        'mono-sm': ['12px', { lineHeight: '16px', letterSpacing: '0px', fontWeight: '500' }],
+      },
+      transitionDuration: {
+        'state-change': '120ms',
+        'surface-enter': '260ms',
+        'surface-exit': '180ms',
+      },
+      transitionDelay: {
+        'state-change': '0ms',
+        'surface-enter': '0ms',
+        'surface-exit': '0ms',
+      },
+      transitionTimingFunction: {
+        'state-change': 'ease-out',
+        'surface-enter': 'cubic-bezier(0.2, 0, 0, 1)',
+        'surface-exit': 'cubic-bezier(0.3, 0, 1, 1)',
+      },
+    },
+  },
+};
+if (typeof module !== 'undefined') module.exports = globalThis.tailwind.config;
+</script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@500&amp;family=Manrope:wght@600;700;800&amp;display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=block" rel="stylesheet">
+  <style>
+    .material-symbols-outlined { display: inline-block; width: 1em; height: 1em; line-height: 1 !important; box-sizing: content-box; overflow: hidden; white-space: nowrap; direction: ltr; vertical-align: middle; }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  </style>
+</head>
+<body class="bg-light-surface dark:bg-dark-surface text-light-on-surface dark:text-dark-on-surface antialiased selection:bg-accent selection:text-light-on-primary">
+  <div class="min-h-screen w-full max-w-md mx-auto flex flex-col relative pb-40">
+
+    <!-- Clean Top Bar -->
+    <header class="sticky top-0 z-20 bg-light-surface/95 dark:bg-dark-surface/95 px-page-margin pt-gutter-lg pb-gutter-md flex items-center justify-between gap-gutter-md">
+      <h1 class="font-display text-headline-lg text-light-on-surface dark:text-dark-on-surface" data-design-text-token="headline-lg">Коллекция</h1>
+
+      <div class="flex items-center gap-gutter-sm">
+        <button type="button" aria-label="Поиск по коллекции" class="w-9 h-9 rounded-full bg-light-surface-container-low dark:bg-dark-surface-container-low border border-light-outline-variant dark:border-dark-outline-variant flex items-center justify-center text-light-on-surface dark:text-dark-on-surface">
+          <span class="material-symbols-outlined text-title-md" aria-hidden="true">search</span>
+        </button>
+        <button type="button" aria-label="Скачанные треки" class="w-9 h-9 rounded-full bg-light-surface-container-low dark:bg-dark-surface-container-low border border-light-outline-variant dark:border-dark-outline-variant flex items-center justify-center text-light-on-surface dark:text-dark-on-surface">
+          <span class="material-symbols-outlined text-title-md" aria-hidden="true">download_done</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Library Content -->
+    <main class="flex-1 flex flex-col gap-gutter-xl px-page-margin pt-gutter-xs">
+
+      <!-- 1. Visual Playlist Shelf (No hidden tabs!) -->
+      <section class="flex flex-col gap-gutter-md" aria-labelledby="playlists-shelf-title">
+        <div class="flex items-baseline justify-between">
+          <h2 id="playlists-shelf-title" class="font-headline text-title-lg text-light-on-surface dark:text-dark-on-surface" data-design-text-token="title-lg">
+            Плейлисты
+          </h2>
+          <span class="font-mono text-label-md text-muted tabular-nums" data-design-text-token="label-md">6</span>
+        </div>
+
+        <div class="overflow-x-auto no-scrollbar -mx-page-margin px-page-margin">
+          <div class="inline-flex items-stretch gap-gutter-md">
+            <article class="w-32 shrink-0 rounded-xl bg-light-surface-container-low dark:bg-dark-surface-container-low p-gutter-sm flex flex-col gap-gutter-sm border border-light-outline-variant dark:border-dark-outline-variant">
+              <img src="https://lh3.googleusercontent.com/aida/ALJJyrBohmbF6rdjDCLAqPTzFSKxP310jtd_3pYlL4WzKDo2GAfOUbDnYbo7f9IhWxiC1gc6i10A0tcFdWX7biUVdo2-A19VKrjEs59JcD2D4nSrLk9mI5-ZSDxOp8GhOqeQlgl0eeZsLaVuR0TyIAf0u9OPfixZ8afZkvvXixQ_NDbOiu-01yqkUPtCtqAc8VCBnnkQOjQNBuka431Rx6FJ0dG1I9zDpLdQ3n7MvP2CRDj7JBtjEMBxUlnMOOGHuz4BND8uTA" alt="Ночной чилл" class="w-full aspect-square rounded-lg object-cover" data-stitch-original-src="224ed0cb5c2d90e5===../../images/cover_premiere.jpg">
+              <div class="flex flex-col">
+                <span class="font-title text-label-lg text-light-on-surface dark:text-dark-on-surface truncate" data-design-text-token="label-lg">Ночной чилл</span>
+                <span class="font-mono text-label-sm text-muted tabular-nums" data-design-text-token="label-sm">42 трека</span>
+              </div>
+            </article>
+
+            <article class="w-32 shrink-0 rounded-xl bg-light-surface-container-low dark:bg-dark-surface-container-low p-gutter-sm flex flex-col gap-gutter-sm border border-light-outline-variant dark:border-dark-outline-variant">
+              <img src="https://lh3.googleusercontent.com/aida/ALJJyrA4Kt-Qet5z_NKc-F81Q6f_1ZWBRw33d9-AG8tjPPzEwP71lXKYkK_ei0LTZas2RxgvXmrT7pPdknLoV4EIbmm326Ti6e_mvT9gjQXbFPd2tGFDGXEzIwD2sGBiMmQg44RcelrQj_0cunfvHAEqjN5_1COwiD6NuhV84q7_5qxQAiyMsTdRj3EyFv1FH8qT-O6JHIMXxMO0VMIhVwrqgHTPuTWsqDp8vsrVGgBLqlnyBkqruPB1M_Gu66uUjk0sFw" alt="В дорогу" class="w-full aspect-square rounded-lg object-cover" data-stitch-original-src="ab436067e7d9b005===../../images/cover_daily.jpg">
+              <div class="flex flex-col">
+                <span class="font-title text-label-lg text-light-on-surface dark:text-dark-on-surface truncate" data-design-text-token="label-lg">В дорогу</span>
+                <span class="font-mono text-label-sm text-muted tabular-nums" data-design-text-token="label-sm">64 трека</span>
+              </div>
+            </article>
+
+            <article class="w-32 shrink-0 rounded-xl bg-light-surface-container-low dark:bg-dark-surface-container-low p-gutter-sm flex flex-col gap-gutter-sm border border-light-outline-variant dark:border-dark-outline-variant">
+              <img src="https://lh3.googleusercontent.com/aida/ALJJyrCAcnJE1-hfX1KXPIUENHxoxuOUC8YdxF9Ck3ae1fNFVrN8z9FZv85_87xscL4WeSE3neY39IqLzH9N2MFxsMcOm-eC7IR9DWh4q_VDN_IhLSw7HqmMlCrRc9VixE_Q1f-RYqpJBft-D1x-V2hfCwquWBAS9hhtTBxGRJvbsyjUzPNcF0tbXwbg_FGVqXPcRrmPuW_XQc7D0w-bnijl7x5z4AjJHdpDJzPyy2amlc_qZASC8ANarsJDPrTO6noyvfk" alt="Спорт и бег" class="w-full aspect-square rounded-lg object-cover" data-stitch-original-src="76dbd6680977facd===../../images/cover_dejavu.jpg">
+              <div class="flex flex-col">
+                <span class="font-title text-label-lg text-light-on-surface dark:text-dark-on-surface truncate" data-design-text-token="label-lg">Спорт и бег</span>
+                <span class="font-mono text-label-sm text-muted tabular-nums" data-design-text-token="label-sm">28 треков</span>
+              </div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2. Liked Tracks + Instant Shuffle -->
+      <section class="flex flex-col gap-gutter-md" aria-labelledby="liked-tracks-title">
+        <div class="flex items-center justify-between gap-gutter-md">
+          <div class="flex items-baseline gap-gutter-sm">
+            <h2 id="liked-tracks-title" class="font-headline text-title-lg text-light-on-surface dark:text-dark-on-surface" data-design-text-token="title-lg">
+              Любимые
+            </h2>
+            <span class="font-mono text-label-md text-muted tabular-nums" data-design-text-token="label-md">200</span>
+          </div>
+
+          <button type="button" class="inline-flex items-center gap-gutter-xs px-gutter-lg py-gutter-sm rounded-full bg-light-on-surface dark:bg-dark-on-surface text-light-surface dark:text-dark-surface active:scale-95 transition-transform duration-state-change">
+            <span class="material-symbols-outlined text-title-md" aria-hidden="true">shuffle</span>
+            <span class="font-label text-label-md" data-design-text-token="label-md">Перемешать</span>
+          </button>
+        </div>
+
+        <!-- Track Rows -->
+        <ul class="flex flex-col gap-gutter-xs">
+          <li class="flex items-center justify-between gap-gutter-md p-gutter-sm rounded-xl hover:bg-light-surface-container-low dark:hover:bg-dark-surface-container-low transition-colors duration-state-change">
+            <div class="flex items-center gap-gutter-md min-w-0 flex-1">
+              <img src="https://lh3.googleusercontent.com/aida/ALJJyrAsGNR6s7tA47shYnUz9b0vsJR4csGBSd1l6SdfV1KYAzPQXJfdJmHKU-nMqTM_oYOqgT6e7nlUn2HeiYcFRNnIkoDPzNbx1tYhUewncxn7ernhFiFt2SqdJJ0WMztoHKXi97s04B1tLfr2q_vdmAkX2SrBJRhKjZPBRcYkD0Gg3bWS93C5lguABhSlJVBCpgZZ_0Cs7PtQS2CB6VbWzCxx34MAfR0mBJ7_doMvrqnfKDYAW4uhx13DP2-Lp5rXQic" alt="мыльница!" class="w-12 h-12 rounded-lg object-cover shrink-0" data-stitch-original-src="5d00e19bce3b074c===../../images/cover_track_1.jpg">
+              <div class="flex flex-col min-w-0">
+                <span class="font-title text-title-md text-light-on-surface dark:text-dark-on-surface truncate" data-design-text-token="title-md">мыльница!</span>
+                <span class="font-body text-body-sm text-muted truncate" data-design-text-token="body-sm">егор бало</span>
+              </div>
+            </div>
+            <div class="flex items-center gap-gutter-sm shrink-0">
+              <span class="font-mono text-label-sm text-muted tabular-nums" data-design-text-token="label-sm">2:34</span>
+              <button type="button" aria-label="Волна по треку" class="w-8 h-8 rounded-full flex items-center justify-center text-muted hover:text-accent">
+                <span class="material-symbols-outlined text-title-md" aria-hidden="true">graphic_eq</span>
+              </button>
+              <button type="button" aria-label="Убрать из любимых" class="w-8 h-8 rounded-full flex items-center justify-center text-accent">
+                <span class="material-symbols-outlined text-title-md" style="font-variation-settings: &#39;FILL&#39; 1;" aria-hidden="true">favorite</span>
+              </button>
+            </div>
+          </li>
+
+          <li class="flex items-center justify-between gap-gutter-md p-gutter-sm rounded-xl hover:bg-light-surface-container-low dark:hover:bg-dark-surface-container-low transition-colors duration-state-change">
+            <div class="flex items-center gap-gutter-md min-w-0 flex-1">
+              <img src="https://lh3.googleusercontent.com/aida/ALJJyrCA8CbryRcky763mSdFX5jEryYa0Upx_LJcJJ6d82XD1D2zImjEoGTWSWe-V0U1eEpx8mlUs9zMFaJXzkHSoa-j3Vv9CciAQmYv8f1Fxy6lmC_YrmbLzlvc6mkM1mSWaWp_RzLShWicmXD4p73BVB9y8_NiIyrcn6rPQdbRyYyZwR-I4qvTtls0WUMVc6HlnUayOO1hwS8ghmKB0vRGfGxpIiNnamftC9uLZTaJUVHu8bl1nJp62oWIGAcyvYFWEw90" alt="Филлеры" class="w-12 h-12 rounded-lg object-cover shrink-0" data-stitch-original-src="c963eee6015fd031===../../images/cover_track_2.jpg">
+              <div class="flex flex-col min-w-0">
+                <span class="font-title text-title-md text-light-on-surface dark:text-dark-on-surface truncate" data-design-text-token="title-md">Филлеры</span>
+                <span class="font-body text-body-sm text-muted truncate" data-design-text-token="body-sm">SODA LUV</span>
+              </div>
+            </div>
+            <div class="flex items-center gap-gutter-sm shrink-0">
+              <span class="font-mono text-label-sm text-muted tabular-nums" data-design-text-token="label-sm">2:18</span>
+              <button type="button" aria-label="Волна по треку" class="w-8 h-8 rounded-full flex items-center justify-center text-muted hover:text-accent">
+                <span class="material-symbols-outlined text-title-md" aria-hidden="true">graphic_eq</span>
+              </button>
+              <button type="button" aria-label="Убрать из любимых" class="w-8 h-8 rounded-full flex items-center justify-center text-accent">
+                <span class="material-symbols-outlined text-title-md" style="font-variation-settings: &#39;FILL&#39; 1;" aria-hidden="true">favorite</span>
+              </button>
+            </div>
+          </li>
+
+          <li class="flex items-center justify-between gap-gutter-md p-gutter-sm rounded-xl hover:bg-light-surface-container-low dark:hover:bg-dark-surface-container-low transition-colors duration-state-change">
+            <div class="flex items-center gap-gutter-md min-w-0 flex-1">
+              <img src="https://lh3.googleusercontent.com/aida/ALJJyrCqyp2WBPBsRDFSMFm2i1XrdHL830PA9-H3NlToSlMDRMn2Rh6OrljPSqWAGlGpuN3Va_AWSXto22imO3Ejs4IzDMfia9GP3tdPSXH9wXqqBl-5UqfnnS133wRKyLlW6XmEXUv8PaM_Ja0c9IyTtZDcjZQ9JIfR6daOatwTc_NjycZWVphQWd319pH-QuExOguGZMdICUdw6yI5UZKmZMBD0Zvnpr83BL9-swYH3CJyQ1wllDuQIR0r6V6xsPTKD1ap" alt="небо" class="w-12 h-12 rounded-lg object-cover shrink-0" data-stitch-original-src="6c1476e9dde6f755===../../images/cover_track_3.jpg">
+              <div class="flex flex-col min-w-0">
+                <span class="font-title text-title-md text-light-on-surface dark:text-dark-on-surface truncate" data-design-text-token="title-md">небо</span>
+                <span class="font-body text-body-sm text-muted truncate" data-design-text-token="body-sm">егор бало</span>
+              </div>
+            </div>
+            <div class="flex items-center gap-gutter-sm shrink-0">
+              <span class="font-mono text-label-sm text-muted tabular-nums" data-design-text-token="label-sm">3:05</span>
+              <button type="button" aria-label="Волна по треку" class="w-8 h-8 rounded-full flex items-center justify-center text-muted hover:text-accent">
+                <span class="material-symbols-outlined text-title-md" aria-hidden="true">graphic_eq</span>
+              </button>
+              <button type="button" aria-label="Убрать из любимых" class="w-8 h-8 rounded-full flex items-center justify-center text-accent">
+                <span class="material-symbols-outlined text-title-md" style="font-variation-settings: &#39;FILL&#39; 1;" aria-hidden="true">favorite</span>
+              </button>
+            </div>
+          </li>
+
+          <li class="flex items-center justify-between gap-gutter-md p-gutter-sm rounded-xl hover:bg-light-surface-container-low dark:hover:bg-dark-surface-container-low transition-colors duration-state-change">
+            <div class="flex items-center gap-gutter-md min-w-0 flex-1">
+              <img src="https://lh3.googleusercontent.com/aida/ALJJyrCmhMjWXkL45ESF7ovk57ezkzlGAtnyFVPHNjoH-di_Ur-i-9USxKNygSPFqbZnhWUGBpX0BPAocYJ54a_W1Y4vivwgOdo3gHYJvcSW4SNqcnb15S7Wv9j-9Hw9_FrRwf0kSVzD7UbnXQwGtY3Xalik-sSBRaeacl6YWra0Lgjnl-NXjqUMBss7xo6DbADjckh3gigb_BdIqoWuedmbkVaeHYOp1U6GP3k4_p--lHkeNimgBGSoSySrYBca0y7_l78" alt="Ураган" class="w-12 h-12 rounded-lg object-cover shrink-0" data-stitch-original-src="1915954f05776626===../../images/cover_track_4.jpg">
+              <div class="flex flex-col min-w-0">
+                <span class="font-title text-title-md text-light-on-surface dark:text-dark-on-surface truncate" data-design-text-token="title-md">Ураган</span>
+                <span class="font-body text-body-sm text-muted truncate" data-design-text-token="body-sm">Телепорт</span>
+              </div>
+            </div>
+            <div class="flex items-center gap-gutter-sm shrink-0">
+              <span class="font-mono text-label-sm text-muted tabular-nums" data-design-text-token="label-sm">2:51</span>
+              <button type="button" aria-label="Волна по треку" class="w-8 h-8 rounded-full flex items-center justify-center text-muted hover:text-accent">
+                <span class="material-symbols-outlined text-title-md" aria-hidden="true">graphic_eq</span>
+              </button>
+              <button type="button" aria-label="Убрать из любимых" class="w-8 h-8 rounded-full flex items-center justify-center text-accent">
+                <span class="material-symbols-outlined text-title-md" style="font-variation-settings: &#39;FILL&#39; 1;" aria-hidden="true">favorite</span>
+              </button>
+            </div>
+          </li>
+
+          <li class="flex items-center justify-between gap-gutter-md p-gutter-sm rounded-xl hover:bg-light-surface-container-low dark:hover:bg-dark-surface-container-low transition-colors duration-state-change">
+            <div class="flex items-center gap-gutter-md min-w-0 flex-1">
+              <img src="https://lh3.googleusercontent.com/aida/ALJJyrBohmbF6rdjDCLAqPTzFSKxP310jtd_3pYlL4WzKDo2GAfOUbDnYbo7f9IhWxiC1gc6i10A0tcFdWX7biUVdo2-A19VKrjEs59JcD2D4nSrLk9mI5-ZSDxOp8GhOqeQlgl0eeZsLaVuR0TyIAf0u9OPfixZ8afZkvvXixQ_NDbOiu-01yqkUPtCtqAc8VCBnnkQOjQNBuka431Rx6FJ0dG1I9zDpLdQ3n7MvP2CRDj7JBtjEMBxUlnMOOGHuz4BND8uTA" alt="проклятье" class="w-12 h-12 rounded-lg object-cover shrink-0" data-stitch-original-src="224ed0cb5c2d90e5===../../images/cover_premiere.jpg">
+              <div class="flex flex-col min-w-0">
+                <span class="font-title text-title-md text-light-on-surface dark:text-dark-on-surface truncate" data-design-text-token="title-md">проклятье</span>
+                <span class="font-body text-body-sm text-muted truncate" data-design-text-token="body-sm">greyrock</span>
+              </div>
+            </div>
+            <div class="flex items-center gap-gutter-sm shrink-0">
+              <span class="font-mono text-label-sm text-muted tabular-nums" data-design-text-token="label-sm">2:12</span>
+              <button type="button" aria-label="Волна по треку" class="w-8 h-8 rounded-full flex items-center justify-center text-muted hover:text-accent">
+                <span class="material-symbols-outlined text-title-md" aria-hidden="true">graphic_eq</span>
+              </button>
+              <button type="button" aria-label="Убрать из любимых" class="w-8 h-8 rounded-full flex items-center justify-center text-accent">
+                <span class="material-symbols-outlined text-title-md" style="font-variation-settings: &#39;FILL&#39; 1;" aria-hidden="true">favorite</span>
+              </button>
+            </div>
+          </li>
+
+          <li class="flex items-center justify-between gap-gutter-md p-gutter-sm rounded-xl hover:bg-light-surface-container-low dark:hover:bg-dark-surface-container-low transition-colors duration-state-change">
+            <div class="flex items-center gap-gutter-md min-w-0 flex-1">
+              <img src="https://lh3.googleusercontent.com/aida/ALJJyrCAcnJE1-hfX1KXPIUENHxoxuOUC8YdxF9Ck3ae1fNFVrN8z9FZv85_87xscL4WeSE3neY39IqLzH9N2MFxsMcOm-eC7IR9DWh4q_VDN_IhLSw7HqmMlCrRc9VixE_Q1f-RYqpJBft-D1x-V2hfCwquWBAS9hhtTBxGRJvbsyjUzPNcF0tbXwbg_FGVqXPcRrmPuW_XQc7D0w-bnijl7x5z4AjJHdpDJzPyy2amlc_qZASC8ANarsJDPrTO6noyvfk" alt="the night we met" class="w-12 h-12 rounded-lg object-cover shrink-0" data-stitch-original-src="76dbd6680977facd===../../images/cover_dejavu.jpg">
+              <div class="flex flex-col min-w-0">
+                <span class="font-title text-title-md text-light-on-surface dark:text-dark-on-surface truncate" data-design-text-token="title-md">the night we met</span>
+                <span class="font-body text-body-sm text-muted truncate" data-design-text-token="body-sm">Money Flip, Willix</span>
+              </div>
+            </div>
+            <div class="flex items-center gap-gutter-sm shrink-0">
+              <span class="font-mono text-label-sm text-muted tabular-nums" data-design-text-token="label-sm">3:20</span>
+              <button type="button" aria-label="Волна по треку" class="w-8 h-8 rounded-full flex items-center justify-center text-muted hover:text-accent">
+                <span class="material-symbols-outlined text-title-md" aria-hidden="true">graphic_eq</span>
+              </button>
+              <button type="button" aria-label="Убрать из любимых" class="w-8 h-8 rounded-full flex items-center justify-center text-accent">
+                <span class="material-symbols-outlined text-title-md" style="font-variation-settings: &#39;FILL&#39; 1;" aria-hidden="true">favorite</span>
+              </button>
+            </div>
+          </li>
+        </ul>
+      </section>
+
+    </main>
+
+    <!-- Unified Ergonomic Thumb Dock: Mini-Player + Clean 3-Tab Pill (Shared Shell) -->
+    <div class="fixed bottom-0 left-0 right-0 z-30 max-w-md mx-auto px-gutter-md pb-gutter-md pt-gutter-sm bg-gradient-to-t from-light-surface via-light-surface/95 to-transparent dark:from-dark-surface dark:via-dark-surface/95">
+      <div class="flex flex-col gap-gutter-sm">
+
+        <!-- Active Track Capsule -->
+        <div class="relative overflow-hidden rounded-xl bg-light-surface-container-high dark:bg-dark-surface-container-high border border-light-outline-variant dark:border-dark-outline-variant px-gutter-md py-gutter-sm flex items-center justify-between gap-gutter-md shadow-xl">
+          <a href="../v2-player/ImmersivePlayer.html" class="flex items-center gap-gutter-md min-w-0 flex-1">
+            <img src="https://lh3.googleusercontent.com/aida/ALJJyrCZYZHKwSLHuoOyJLuIhvkd7aDRDj06Fczhcd8WCT4F3hNd-VfMBci_nmnaCnvAJd-UK9UEhE0PhUyuqJxgsDEEcZKU3w1yYn3kfQYes0jjUoINLKkPj26zVbY32K8MHHl4QGu242VpNlGqYFZ8Ilhaq3WHwjebwyLei1xawhvYSn_TrsVONZHenMmoY1EW0UfJHSxfnqkarrABc1DEMUdw6ZktBFcYQCVt2FbCkkSdGGDJu8VuwCZOEs41YLDoE-WxxQ" alt="Lavender" class="w-11 h-11 rounded-md object-cover shrink-0" data-stitch-original-src="0c2e9e5aea45120d===../../images/cover_lavender.jpg">
+            <div class="flex flex-col min-w-0">
+              <span class="font-title text-label-lg text-light-on-surface dark:text-dark-on-surface truncate" data-design-text-token="label-lg">Lavender</span>
+              <span class="font-body text-label-md text-muted truncate" data-design-text-token="label-md">Vacations · Моя Волна</span>
+            </div>
+          </a>
+
+          <div class="flex items-center gap-gutter-xs shrink-0">
+            <button type="button" aria-label="Воспроизвести" class="w-9 h-9 rounded-full bg-light-on-surface dark:bg-dark-on-surface text-light-surface dark:text-dark-surface flex items-center justify-center active:scale-95 transition-transform duration-state-change">
+              <span class="material-symbols-outlined text-title-lg" style="font-variation-settings: &#39;FILL&#39; 1;" aria-hidden="true">play_arrow</span>
+            </button>
+            <button type="button" aria-label="Следующий трек" class="w-9 h-9 rounded-full flex items-center justify-center text-light-on-surface dark:text-dark-on-surface">
+              <span class="material-symbols-outlined text-title-lg" aria-hidden="true">skip_next</span>
+            </button>
+          </div>
+
+          <div class="absolute bottom-0 left-gutter-md right-gutter-md h-0.5 bg-light-surface-container-highest dark:bg-dark-surface-container-highest rounded-full overflow-hidden">
+            <div class="w-5/12 h-full bg-accent rounded-full"></div>
+          </div>
+        </div>
+
+        <!-- Clean 3-Destination Nav Pill -->
+        <nav aria-label="Основная навигация" class="rounded-full bg-light-surface-container-low dark:bg-dark-surface-container-low border border-light-outline-variant dark:border-dark-outline-variant p-gutter-xs">
+          <ul class="grid grid-cols-3 items-center gap-gutter-xs">
+            <li>
+              <a href="../v2-home/HomeFlow.html" class="flex items-center justify-center gap-gutter-xs py-gutter-sm rounded-full text-muted hover:text-light-on-surface dark:hover:text-dark-on-surface transition-colors">
+                <span class="material-symbols-outlined text-title-md" aria-hidden="true">graphic_eq</span>
+                <span class="font-label text-label-md" data-design-text-token="label-md">Поток</span>
+              </a>
+            </li>
+            <li>
+              <a href="#search" class="flex items-center justify-center gap-gutter-xs py-gutter-sm rounded-full text-muted hover:text-light-on-surface dark:hover:text-dark-on-surface transition-colors">
+                <span class="material-symbols-outlined text-title-md" aria-hidden="true">search</span>
+                <span class="font-label text-label-md" data-design-text-token="label-md">Поиск</span>
+              </a>
+            </li>
+            <li>
+              <a href="LibraryHub.html" aria-current="page" class="flex items-center justify-center gap-gutter-xs py-gutter-sm rounded-full bg-light-surface-container-high dark:bg-dark-surface-container-high text-light-on-surface dark:text-dark-on-surface">
+                <span class="material-symbols-outlined text-title-md text-accent" style="font-variation-settings: &#39;FILL&#39; 1;" aria-hidden="true">library_music</span>
+                <span class="font-label text-label-md" data-design-text-token="label-md">Коллекция</span>
+              </a>
+            </li>
+          </ul>
+        </nav>
+
+      </div>
+    </div>
+
+  </div>
+
+
+</body></html>
