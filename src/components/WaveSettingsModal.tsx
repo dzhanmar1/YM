@@ -13,8 +13,8 @@ const ACTIVITIES = [
 
 const LANGUAGES = [
   { id: 'russian', label: 'Русский' },
-  { id: 'english', label: 'Иностранный' },
-  { id: 'instrumental', label: 'Без слов' },
+  { id: 'not-russian', label: 'Иностранный' },
+  { id: 'without-words', label: 'Без слов' },
 ];
 
 const CHARACTERS = [
@@ -48,7 +48,10 @@ export const WaveSettingsModal: React.FC = () => {
       setSelectedActivity(waveSettings.activity || null);
       setSelectedMood(waveSettings.mood || null);
       setSelectedCharacter(waveSettings.character || null);
-      setSelectedLanguage(waveSettings.language || null);
+      let lang = waveSettings.language || null;
+      if (lang === 'english') lang = 'not-russian';
+      if (lang === 'instrumental') lang = 'without-words';
+      setSelectedLanguage(lang);
     } else {
       setSelectedActivity(null);
       setSelectedCharacter(null);

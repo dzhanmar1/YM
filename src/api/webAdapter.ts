@@ -690,22 +690,41 @@ export async function getSuggestions(query: string): Promise<string[]> {
 }
 
 export async function startCustomWave(options: CustomWaveOptions): Promise<RotorStation> {
-  const stationId = 'user:onyourwave';
-  if (options.mood || options.activity || options.character || options.language) {
+  let stationId = 'user:onyourwave';
+  if (options.activity) {
+    stationId = `activity:${options.activity}`;
+  }
+
+  // Map language to Yandex Rotor schema values ('russian', 'not-russian', 'without-words', 'any')
+  let mappedLanguage = 'any';
+  if (options.language) {
+    if (options.language === 'english' || options.language === 'not-russian') {
+      mappedLanguage = 'not-russian';
+    } else if (options.language === 'instrumental' || options.language === 'without-words') {
+      mappedLanguage = 'without-words';
+    } else if (options.language === 'russian') {
+      mappedLanguage = 'russian';
+    }
+  }
+
+  // Both user:onyourwave and activity:* stations support restrictions2 settings
+  if (options.mood || options.character || options.language) {
     try {
-      await ymFetch(`/rotor/station/${stationId}/settings3`, {
+      await ymFetch(`/rotor/station/${encodeURIComponent(stationId)}/settings3`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           moodEnergy: options.mood || 'all',
           diversity: options.character || 'default',
-          language: options.language || 'any',
-          activity: options.activity || 'all',
+          language: mappedLanguage,
           type: 'rotor',
         }),
       });
-    } catch {}
+    } catch (err) {
+      console.warn(`[startCustomWave] Failed to apply settings3 for ${stationId}:`, err);
+    }
   }
+
   return getStationTracks(stationId);
 }
 

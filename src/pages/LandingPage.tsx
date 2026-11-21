@@ -29,7 +29,7 @@ export function LandingPage() {
   const [loadingTracks, setLoadingTracks] = useState(false);
   const [viewMode, setViewMode] = useState<'overview' | 'chart'>('overview');
 
-  const { playTrack, setQueue, currentTrack, isPlaying, togglePlay, waveMode, startWave, startCustomWave } = usePlayerStore();
+  const { playTrack, setQueue, currentTrack, isPlaying, togglePlay, waveMode, waveSettings, startWave, startCustomWave } = usePlayerStore();
   const { setWaveSettingsOpen } = useWindowStore();
   const isMobile = useIsMobile();
 
@@ -363,33 +363,34 @@ export function LandingPage() {
                     { label: 'Любимое', opt: { character: 'favorite' } },
                     { label: 'Незнакомое', opt: { character: 'discover' } },
                     { label: 'Работа', opt: { activity: 'work-background' } },
-                  ].map((chip) => (
-                    <button
-                      key={chip.label}
-                      onClick={() => startCustomWave(chip.opt)}
-                      style={{
-                        padding: '5px 12px',
-                        borderRadius: 14,
-                        border: '1px solid rgba(255, 255, 255, 0.12)',
-                        backgroundColor: 'rgba(255, 255, 255, 0.06)',
-                        color: '#dddddd',
-                        fontSize: 11,
-                        fontWeight: 600,
-                        cursor: 'pointer',
-                        transition: 'all 0.12s ease',
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = '#ffffff';
-                        e.currentTarget.style.color = '#000000';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.06)';
-                        e.currentTarget.style.color = '#dddddd';
-                      }}
-                    >
-                      {chip.label}
-                    </button>
-                  ))}
+                  ].map((chip) => {
+                    const isActive = Boolean(
+                      waveMode &&
+                        waveSettings &&
+                        ((chip.opt.mood && waveSettings.mood === chip.opt.mood) ||
+                          (chip.opt.character && waveSettings.character === chip.opt.character) ||
+                          (chip.opt.activity && waveSettings.activity === chip.opt.activity))
+                    );
+                    return (
+                      <button
+                        key={chip.label}
+                        onClick={() => startCustomWave(chip.opt)}
+                        style={{
+                          padding: '5px 12px',
+                          borderRadius: 14,
+                          border: isActive ? '1px solid #ffffff' : '1px solid rgba(255, 255, 255, 0.12)',
+                          backgroundColor: isActive ? '#ffffff' : 'rgba(255, 255, 255, 0.06)',
+                          color: isActive ? '#000000' : '#dddddd',
+                          fontSize: 11,
+                          fontWeight: isActive ? 700 : 600,
+                          cursor: 'pointer',
+                          transition: 'all 0.12s ease',
+                        }}
+                      >
+                        {chip.label}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             </div>
