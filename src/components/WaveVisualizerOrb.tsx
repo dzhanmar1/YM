@@ -55,123 +55,131 @@ const vertexShaderSource = `
   }
 `;
 
-// Версия 5.1: Стабильное Био-Ядро (Safe Dense Bio-Core)
+// Версия 5: Квантовое ядро + Флюидный фон (Dual-Layer Engine)
 const fragmentShaderSource = `
   #ifdef GL_FRAGMENT_PRECISION_HIGH
   precision highp float;
   #else
   precision mediump float;
   #endif
-  
+
   uniform vec2 u_resolution;
   uniform float u_time;
-  
+
   uniform float u_bass;
   uniform float u_mid;
   uniform float u_treb;
-  
+
   uniform vec3 u_color1;
   uniform vec3 u_color2;
   uniform vec3 u_color3;
 
   // 2D Simplex Noise
-  vec3 permute(vec3 x) { return mod(((x*34.0)+1.0)*x, 289.0); }
+  vec3 permute(vec3 x) { return mod(((x * 34.0) + 1.0) * x, 289.0); }
   float snoise(vec2 v){
-      const vec4 C = vec4(0.211324865405187, 0.366025403784439, -0.577350269189626, 0.024390243902439);
-      vec2 i  = floor(v + dot(v, C.yy) );
-      vec2 x0 = v -   i + dot(i, C.xx);
-      vec2 i1 = (x0.x > x0.y) ? vec2(1.0, 0.0) : vec2(0.0, 1.0);
-      vec4 x12 = x0.xyxy + C.xxzz;
-      x12.xy -= i1;
-      i = mod(i, 289.0);
-      vec3 p = permute( permute( i.y + vec3(0.0, i1.y, 1.0 )) + i.x + vec3(0.0, i1.x, 1.0 ));
-      vec3 m = max(0.5 - vec3(dot(x0,x0), dot(x12.xy,x12.xy), dot(x12.zw,x12.zw)), 0.0);
-      m = m*m ; m = m*m ;
-      vec3 x = 2.0 * fract(p * C.www) - 1.0;
-      vec3 h = abs(x) - 0.5;
-      vec3 ox = floor(x + 0.5);
-      vec3 a0 = x - ox;
-      m *= 1.79284291400159 - 0.85373472095314 * ( a0*a0 + h*h );
-      vec3 g;
-      g.x  = a0.x  * x0.x  + h.x  * x0.y;
-      g.yz = a0.yz * x12.xz + h.yz * x12.yw;
-      return 130.0 * dot(m, g);
+    const vec4 C = vec4(0.211324865405187, 0.366025403784439, -0.577350269189626, 0.024390243902439);
+    vec2 i  = floor(v + dot(v, C.yy) );
+    vec2 x0 = v -   i + dot(i, C.xx);
+    vec2 i1 = (x0.x > x0.y) ? vec2(1.0, 0.0) : vec2(0.0, 1.0);
+    vec4 x12 = x0.xyxy + C.xxzz;
+    x12.xy -= i1;
+    i = mod(i, 289.0);
+    vec3 p = permute( permute( i.y + vec3(0.0, i1.y, 1.0 )) + i.x + vec3(0.0, i1.x, 1.0 ));
+    vec3 m = max(0.5 - vec3(dot(x0,x0), dot(x12.xy,x12.xy), dot(x12.zw,x12.zw)), 0.0);
+    m = m * m; m = m * m;
+    vec3 x = 2.0 * fract(p * C.www) - 1.0;
+    vec3 h = abs(x) - 0.5;
+    vec3 ox = floor(x + 0.5);
+    vec3 a0 = x - ox;
+    m *= 1.79284291400159 - 0.85373472095314 * ( a0 * a0 + h * h );
+    vec3 g;
+    g.x  = a0.x  * x0.x  + h.x  * x0.y;
+    g.yz = a0.yz * x12.xz + h.yz * x12.yw;
+    return 130.0 * dot(m, g);
   }
 
   void main() {
-      vec2 uv = (gl_FragCoord.xy - 0.5 * u_resolution.xy) / min(u_resolution.x, u_resolution.y);
-      uv *= 1.5; // Отдаляем камеру, чтобы ядру было куда раздуваться
-      
-      float dist = length(uv);
-      // БЕЗОПАСНАЯ НОРМАЛИЗАЦИЯ (чтобы избежать деления на ноль в центре)
-      vec2 dir = dist > 0.001 ? uv / dist : vec2(0.0); 
-      float angle = atan(uv.y, uv.x);
-      float time = u_time * 0.7;
-      
-      // 1. АГРЕССИВНАЯ ДЕФОРМАЦИЯ (Звук физически рвет ткань)
-      vec2 warpUV = uv;
-      
-      // Базовое мягкое кипение жидкости
-      warpUV.x += snoise(vec2(uv.x * 2.5 + time * 0.5, uv.y * 2.5)) * 0.1;
-      warpUV.y += snoise(vec2(uv.x * 2.5, uv.y * 2.5 - time * 0.5)) * 0.1;
-      
-      // Бас выталкивает куски плазмы наружу (взрывной эффект)
-      float beatWarp = snoise(vec2(uv.x * 3.0 - time, uv.y * 3.0 + time)) * (u_bass * 0.6);
-      warpUV += dir * beatWarp;
-      
-      // Высокие частоты создают электрические "заусенцы" и искры
-      float spikeNoise = snoise(vec2(angle * 5.0, time * 3.0));
-      float spikes = spikeNoise * (u_treb * 0.3);
-      
-      float r = length(warpUV) - spikes;
-      
-      // 2. ФОРМИРОВАНИЕ ПЛОТНОГО ЯДРА
-      float coreRadius = 0.22 + (u_bass * 0.15); // На басах ядро раздувается
-      
-      // Само тело (плотный сгусток)
-      float body = smoothstep(coreRadius + 0.1, coreRadius - 0.12, r);
-      
-      // Раскаленный центр
-      float hotCore = smoothstep(coreRadius * 0.6, 0.0, r);
-      
-      // 3. ВНУТРЕННИЕ ВОДОВОРОТЫ ЦВЕТА
-      vec2 fluidUV = warpUV * 3.0;
-      float colorMix1 = snoise(fluidUV + time * 0.8) * 0.5 + 0.5;
-      float colorMix2 = snoise(fluidUV * 1.5 - time * 1.2) * 0.5 + 0.5;
-      
-      vec3 baseColor = mix(u_color1, u_color2, colorMix1);
-      baseColor = mix(baseColor, u_color3, colorMix2);
-      
-      vec3 finalColor = vec3(0.0);
-      
-      // 4. КОМПОЗИТИНГ (СБОРКА)
-      // Внешняя мягкая аура
-      float aura = smoothstep(coreRadius + 0.7, coreRadius, dist);
-      finalColor += mix(u_color1, u_color3, 0.5) * aura * 0.3 * (1.0 + u_bass);
-      
-      // Оптический объем для самого тела (Фейковые нормали/Стекло)
-      vec3 bodyColor = baseColor * body;
-      float thickness = smoothstep(coreRadius + 0.15, 0.0, r);
-      // БЕЗОПАСНАЯ НОРМАЛИЗАЦИЯ
-      vec3 normal = normalize(vec3(warpUV.x, warpUV.y, thickness + 0.001)); 
-      
-      // Fresnel (преломление света по краям сгустка)
-      float fresnel = pow(1.0 - max(0.0, dot(normal, vec3(0.0, 0.0, 1.0))), 2.5);
-      bodyColor += mix(u_color2, vec3(1.0), 0.3) * fresnel * body * (0.5 + u_treb * 1.5);
-      
-      // Внутренняя энергия
-      bodyColor += u_color1 * hotCore * (0.2 + u_bass * 1.8);
-      
-      // Смешиваем тело с аурой
-      finalColor = mix(finalColor, finalColor + bodyColor, body);
-      
-      // Мягкое растворение к краям (без рамок)
-      finalColor *= smoothstep(1.0, 0.35, dist);
-      
-      // Сочность
-      finalColor = pow(finalColor, vec3(0.85));
-      
-      gl_FragColor = vec4(finalColor, 1.0);
+    // Нормализация координат
+    vec2 uv = (gl_FragCoord.xy - 0.5 * u_resolution.xy) / min(u_resolution.x, u_resolution.y);
+    float dist = length(uv);
+    float angle = atan(uv.y, uv.x);
+    float time = u_time * 0.5;
+
+    // ==========================================
+    // СЛОЙ 1: ФОНОВАЯ ФЛЮИДНАЯ ПЛАЗМА (Окружение)
+    // ==========================================
+    vec2 bgUV = uv * 0.65;
+    float flow = time - length(bgUV) * 1.5;
+
+    vec2 warp = bgUV;
+    warp.x += snoise(vec2(bgUV.x * 2.0 + flow, bgUV.y * 2.0)) * 0.15 * (1.0 + u_bass * 1.5);
+    warp.y += snoise(vec2(bgUV.x * 2.0, bgUV.y * 2.0 - flow)) * 0.15 * (1.0 + u_bass * 1.5);
+
+    float bgDensity = smoothstep(1.0, 0.15, length(warp)); // Плавно тает к краям
+
+    vec3 bgColor = mix(u_color3, u_color1, snoise(warp * 2.0 + time) * 0.5 + 0.5);
+    bgColor = mix(bgColor, u_color2, snoise(warp * 3.0 - time) * 0.5 + 0.5);
+
+    // Мягкий фон, реагирующий на басы только яркостью
+    vec3 bgLayer = bgColor * bgDensity * (0.25 + u_bass * 0.5);
+
+    // ==========================================
+    // СЛОЙ 2: КВАНТОВОЕ ЯДРО (Аудио-визуализатор)
+    // ==========================================
+
+    float coreRadius = 0.14 + u_bass * 0.03; // Размер стеклянной сферы
+
+    // 2.1 ГЕОМЕТРИЯ ВОЛНЫ (Oscilloscope Rings)
+    float wave = 0.0;
+    // Структурные искажения от средних частот
+    wave += snoise(vec2(angle * 5.0, time * 1.5)) * (u_mid * 0.08);
+    // Резкая дрожь от высоких частот
+    wave += snoise(vec2(angle * 14.0, time * 3.0)) * (u_treb * 0.06);
+    // Экстремальные иглы-выбросы (spikes) на пиках
+    float spikes = pow(abs(sin(angle * 22.0 + time * 5.0)), 30.0);
+    wave += spikes * (u_treb * 0.15) * sign(snoise(vec2(angle * 3.0, time)));
+
+    // Орбита кольца вокруг ядра
+    float ringRadius = coreRadius + 0.06 + wave;
+    float ringDist = abs(dist - ringRadius);
+
+    // Рисуем кольцо (очень яркая тонкая линия + мягкое свечение)
+    float ringGlow = (0.0015 + u_treb * 0.003) / (ringDist + 0.0001);
+    ringGlow += smoothstep(0.05 + u_mid * 0.05, 0.0, ringDist) * 0.5;
+
+    vec3 ringColor = mix(u_color1, u_color2, sin(angle * 2.0 - time * 2.0) * 0.5 + 0.5);
+    vec3 ringLayer = ringColor * ringGlow;
+
+    // 2.2 ВНУТРИ СФЕРЫ (Тёмное стекло + Энергетическая звезда)
+    float insideGlass = smoothstep(coreRadius, coreRadius - 0.01, dist);
+
+    // Затемняем фон за стеклом (создаем иллюзию объема)
+    bgLayer *= (1.0 - insideGlass * 0.85);
+
+    // Внутренняя пульсирующая звезда (танцует от баса)
+    vec2 starPos = vec2(snoise(vec2(time * 2.0)), snoise(vec2(-time * 2.0))) * 0.02 * u_bass;
+    float starDist = length(uv + starPos);
+    float starGlow = (0.01 + u_bass * 0.03) / (starDist + 0.001);
+    starGlow *= insideGlass; // Ограничиваем звезду стенками стекла
+    vec3 starLayer = mix(u_color3, vec3(1.0), u_bass) * starGlow * 1.5;
+
+    // 2.3 ОПТИКА КРАЁВ (Fresnel)
+    // Преломление света на краях стеклянного шара
+    float glassEdge = smoothstep(coreRadius - 0.02, coreRadius, dist) * smoothstep(coreRadius + 0.02, coreRadius, dist);
+    vec3 edgeLayer = u_color2 * glassEdge * 3.0 * (0.5 + u_mid);
+
+    // ==========================================
+    // ФИНАЛЬНЫЙ КОМПОЗИТ
+    // ==========================================
+    vec3 finalColor = bgLayer + ringLayer + starLayer + edgeLayer;
+
+    // Глубокая виньетка по краям экрана, чтобы плазма бесконечно таяла в фоне
+    finalColor *= smoothstep(1.0, 0.35, length(uv));
+
+    // Контраст (Tonemapping)
+    finalColor = pow(finalColor, vec3(0.85));
+
+    gl_FragColor = vec4(finalColor, 1.0);
   }
 `;
 
@@ -359,35 +367,45 @@ export const WaveVisualizerOrb: React.FC<WaveVisualizerOrbProps> = ({ onTogglePl
 
   return (
     <div className="relative flex items-center justify-center w-full max-w-[280px] sm:max-w-[340px] aspect-square mx-auto my-1">
+      {/* WebGL Canvas */}
       <canvas
         ref={canvasRef}
         className="absolute inset-0 w-full h-full block mix-blend-screen pointer-events-none"
       />
 
+      {/* 
+        ИНВИЗИБЛ-КНОПКА НА ВЕСЬ ЭКРАН 
+        Иконка полностью пропадает во время воспроизведения, оставляя ядро чистым!
+      */}
       <button
         type="button"
         onClick={onTogglePlay}
-        className="
-          relative z-10 
-          flex items-center justify-center 
-          w-16 h-16 rounded-full 
-          bg-black/40 backdrop-blur-2xl 
-          border border-white/10 
-          shadow-[0_10px_40px_rgba(0,0,0,0.6),inset_0_0_20px_rgba(255,255,255,0.15)]
-          transition-all duration-500 cubic-bezier(0.4,0,0.2,1)
-          hover:bg-white/10 hover:scale-110 hover:border-white/30 hover:shadow-[0_10px_50px_rgba(255,59,92,0.2)]
-          active:scale-95 active:bg-white/20
-          group overflow-hidden
-        "
+        className="absolute inset-0 z-10 w-full h-full flex items-center justify-center group outline-none cursor-pointer"
         aria-label={isPlaying ? 'Пауза' : 'Воспроизвести'}
       >
-        <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-white/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-
-        {isPlaying ? (
-          <Pause className="w-6 h-6 text-white fill-white/90 group-hover:fill-white transition-all" />
-        ) : (
-          <Play className="w-6 h-6 text-white fill-white/90 group-hover:fill-white transition-all ml-1" />
-        )}
+        <div
+          className={`
+            flex items-center justify-center 
+            w-16 h-16 rounded-full 
+            bg-black/30 backdrop-blur-md 
+            border border-white/10 
+            shadow-[0_10px_40px_rgba(0,0,0,0.4)]
+            transition-all duration-700 cubic-bezier(0.4,0,0.2,1)
+            group-hover:bg-white/10 group-hover:scale-110 group-hover:border-white/30 
+            group-active:scale-95 group-active:bg-white/20
+            ${
+              isPlaying
+                ? 'opacity-0 scale-90 group-hover:opacity-100 group-hover:scale-110'
+                : 'opacity-100 scale-100'
+            }
+          `}
+        >
+          {isPlaying ? (
+            <Pause className="w-6 h-6 text-white fill-white/90 group-hover:fill-white transition-all" />
+          ) : (
+            <Play className="w-6 h-6 text-white fill-white/90 group-hover:fill-white transition-all ml-1" />
+          )}
+        </div>
       </button>
     </div>
   );
