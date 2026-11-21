@@ -560,58 +560,67 @@ export function LandingPage({ onSelectTab }: LandingPageProps) {
 
       {viewMode === 'overview' ? (
         <>
-          {/* HERO: Моя Волна */}
-          <section className="mb-9 p-6 rounded-2xl bg-gradient-to-r from-dark-surface-container via-dark-surface-container-low to-dark-surface border border-dark-outline-variant flex items-center justify-between gap-6 shadow-xl relative overflow-hidden">
-            <div className="flex items-center gap-5">
-              <button
-                type="button"
-                onClick={() => startWave()}
-                className="w-14 h-14 rounded-full bg-accent text-light-on-primary flex items-center justify-center shadow-lg active:scale-95 transition-transform shrink-0"
-                title="Включить Мою Волну"
-              >
-                <Radio size={28} />
-              </button>
+          {/* HERO: Моя Волна (Acoustic Fluid Orb Stage) */}
+          <section className="mb-9 p-8 rounded-3xl bg-gradient-to-r from-dark-surface-container via-dark-surface-container-low to-dark-surface border border-dark-outline-variant flex items-center justify-between gap-8 shadow-2xl relative overflow-hidden">
+            {/* Ambient Glow */}
+            <div className="pointer-events-none absolute -top-10 -left-10 w-96 h-96 rounded-full bg-accent opacity-10 blur-3xl" />
 
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <h2 className="font-display text-title-lg text-dark-on-surface">Моя Волна</h2>
-                  {waveMode && isPlaying && (
-                    <span className="text-label-sm font-bold bg-accent text-light-on-primary px-2 py-0.5 rounded-full">
-                      Сейчас играет
-                    </span>
-                  )}
-                </div>
-                <p className="text-body-sm text-muted max-w-lg mb-3">
-                  Бесконечный поток музыки, который подстраивается под ваши вкусы и настроение.
-                </p>
-
-                {/* Mood Chips */}
-                <div className="flex flex-wrap gap-2">
-                  {MOOD_CHIPS.map((chip) => {
-                    const isActive = Boolean(
-                      waveMode &&
-                        waveSettings &&
-                        ((chip.opt.mood && waveSettings.mood === chip.opt.mood) ||
-                          (chip.opt.activity && waveSettings.activity === chip.opt.activity) ||
-                          (chip.opt.character && waveSettings.character === chip.opt.character))
-                    );
-                    return (
-                      <button
-                        key={chip.label}
-                        type="button"
-                        onClick={() => startCustomWave(chip.opt)}
-                        className={`px-3 py-1 rounded-full text-label-sm transition-colors border ${
-                          isActive
-                            ? 'bg-accent/15 text-dark-primary border-accent font-semibold'
-                            : 'bg-dark-surface-container-high border-dark-outline-variant text-muted hover:text-dark-on-surface'
-                        }`}
-                      >
-                        {chip.label}
-                      </button>
-                    );
-                  })}
-                </div>
+            <div className="flex-1 z-10 flex flex-col gap-3">
+              <div className="flex items-center gap-3">
+                <span className="w-3 h-3 rounded-full bg-accent shadow-[0_0_12px_rgba(255,59,92,0.8)]" />
+                <h2 className="font-display text-2xl font-bold text-dark-on-surface">Моя Волна</h2>
+                {waveMode && isPlaying && (
+                  <span className="text-label-xs font-bold bg-accent text-dark-surface px-2.5 py-0.5 rounded-full shadow-sm">
+                    Сейчас играет
+                  </span>
+                )}
               </div>
+              <p className="text-body-sm text-muted max-w-lg">
+                Бесконечный поток музыки, который подстраивается под ваши вкусы и текущий ритм.
+              </p>
+
+              {/* Mood Chips */}
+              <div className="flex flex-wrap gap-2 pt-1">
+                {MOOD_CHIPS.map((chip) => {
+                  const isActive = Boolean(
+                    waveMode &&
+                      waveSettings &&
+                      ((chip.opt.mood && waveSettings.mood === chip.opt.mood) ||
+                        (chip.opt.activity && waveSettings.activity === chip.opt.activity) ||
+                        (chip.opt.character && waveSettings.character === chip.opt.character))
+                  );
+                  return (
+                    <button
+                      key={chip.label}
+                      type="button"
+                      onClick={() => startCustomWave(chip.opt)}
+                      className={`px-3 py-1.5 rounded-full text-label-sm transition-all border active:scale-95 ${
+                        isActive
+                          ? 'bg-accent/20 text-accent border-accent font-semibold shadow-sm'
+                          : 'bg-dark-surface-container-high border-dark-outline-variant text-muted hover:text-dark-on-surface'
+                      }`}
+                    >
+                      {chip.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Desktop Acoustic Fluid Orb */}
+            <div className="w-56 h-56 shrink-0 relative flex items-center justify-center z-10">
+              <WaveVisualizerOrb
+                onTogglePlay={() => {
+                  if (waveMode && isPlaying) {
+                    togglePlay();
+                  } else if (waveMode) {
+                    togglePlay();
+                  } else {
+                    startWave();
+                  }
+                }}
+                isPlaying={Boolean(waveMode && isPlaying)}
+              />
             </div>
           </section>
 
