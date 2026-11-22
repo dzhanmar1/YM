@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Manrope:wght@600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Jost:ital,wght@0,300..800;1,300..800&family=Prosto+One&family=Unbounded:wght@400..900&family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&subset=cyrillic,cyrillic-ext,latin&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -35,7 +35,9 @@
   --radius-xl: 24px;
   --radius-full: 9999px;
 
-  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-sans: 'Jost', 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-display: 'Unbounded', sans-serif;
+  --font-prosto: 'Prosto One', cursive, sans-serif;
   --font-mono: 'JetBrains Mono', 'SF Mono', Consolas, monospace;
 
   /* Safe Area Insets for Mobile/Android (Notch & Gesture Bar) */

@@ -83,11 +83,12 @@ export default {
         'page-margin': '20px',
       },
       fontFamily: {
-        'display': ['"Manrope"', 'sans-serif'],
-        'headline': ['"Manrope"', 'sans-serif'],
-        'title': ['"Inter"', 'sans-serif'],
-        'body': ['"Inter"', 'sans-serif'],
-        'label': ['"Inter"', 'sans-serif'],
+        'display': ['"Unbounded"', 'sans-serif'],
+        'headline': ['"Unbounded"', 'sans-serif'],
+        'title': ['"Jost"', '"Inter"', 'sans-serif'],
+        'body': ['"Jost"', '"Inter"', 'sans-serif'],
+        'label': ['"Jost"', '"Inter"', 'sans-serif'],
+        'prosto': ['"Prosto One"', 'cursive', 'sans-serif'],
         'mono': ['"JetBrains Mono"', 'monospace'],
       },
       fontSize: {

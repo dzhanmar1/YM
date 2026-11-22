@@ -273,7 +273,7 @@ export function ImmersiveNowPlaying() {
               >
                 <div className="flex flex-col gap-gutter-xs min-w-0">
                   <span className="font-label text-label-sm text-accent">Текст сейчас</span>
-                  <p className="font-headline text-body-md text-dark-on-surface truncate">
+                  <p className="font-title text-body-md text-dark-on-surface truncate font-medium">
                     {lyrics?.lines && activeLineIndex >= 0 && lyrics.lines[activeLineIndex]
                       ? lyrics.lines[activeLineIndex].text
                       : 'Нажмите, чтобы открыть караоке-текст'}

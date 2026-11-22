@@ -112,8 +112,8 @@ export function LyricsModal({ onBackToPlayer }: LyricsModalProps) {
                   <p
                     className={
                       isActive
-                        ? 'font-display text-display-lg-mobile text-dark-on-surface text-balance'
-                        : 'font-headline text-headline-md text-muted/80 text-pretty'
+                        ? 'font-title text-display-lg-mobile text-dark-on-surface text-balance font-semibold tracking-tight'
+                        : 'font-body text-headline-md text-muted/70 text-pretty font-normal'
                     }
                   >
                     {line.text}
@@ -175,7 +175,7 @@ export function LyricsModal({ onBackToPlayer }: LyricsModalProps) {
             }`}
           >
             {copied ? <Check size={18} /> : <Quote size={18} className="text-accent" />}
-            <span className="font-label text-label-md">{copied ? 'Скопировано!' : 'Цитата'}</span>
+            <span className="font-prosto text-label-md tracking-wide">{copied ? 'Скопировано!' : 'Цитата'}</span>
           </button>
         </div>
       </footer>
