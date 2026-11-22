@@ -25,12 +25,20 @@ interface LandingPageProps {
   onSelectTab?: (tab: 'landing' | 'collection' | 'search') => void;
 }
 
+const CHARACTER_CHIPS = [
+  { id: 'favorite', label: 'Любимое', desc: 'Сфера' },
+  { id: 'discover', label: 'Незнакомое', desc: 'Призма' },
+  { id: 'popular', label: 'Популярное', desc: 'Корона' },
+] as const;
+
 const MOOD_CHIPS = [
-  { label: 'Бодрое', opt: { mood: 'active' } },
-  { label: 'Ночной драйв', opt: { activity: 'driving' } },
-  { label: 'Фокус', opt: { activity: 'work-background' } },
-  { label: 'Незнакомое', opt: { character: 'discover' } },
-  { label: 'Любимое', opt: { character: 'favorite' } },
+  { id: 'active', label: 'Бодрое', type: 'mood' as const },
+  { id: 'fun', label: 'Радостное', type: 'mood' as const },
+  { id: 'calm', label: 'Спокойное', type: 'mood' as const },
+  { id: 'sad', label: 'Грустное', type: 'mood' as const },
+  { id: 'driving', label: 'Ночной драйв', type: 'activity' as const },
+  { id: 'work-background', label: 'Фокус', type: 'activity' as const },
+  { id: 'workout', label: 'Тренировка', type: 'activity' as const },
 ];
 
 export function LandingPage({ onSelectTab }: LandingPageProps) {
@@ -68,6 +76,45 @@ export function LandingPage({ onSelectTab }: LandingPageProps) {
       console.error('Failed to load landing data:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleToggleCharacter = (charId: string) => {
+    const current = waveSettings || {};
+    const isSelected = waveMode && current.character === charId;
+
+    const nextSettings: { activity?: string; mood?: string; character?: string; language?: string } = {
+      mood: current.mood,
+      activity: current.activity,
+      language: current.language,
+      character: isSelected ? undefined : charId,
+    };
+
+    if (!nextSettings.character && !nextSettings.mood && !nextSettings.activity && !nextSettings.language) {
+      startWave();
+    } else {
+      startCustomWave(nextSettings);
+    }
+  };
+
+  const handleToggleMood = (item: { id: string; type: 'mood' | 'activity' }) => {
+    const current = waveSettings || {};
+    const isSelected =
+      waveMode &&
+      ((item.type === 'mood' && current.mood === item.id) ||
+       (item.type === 'activity' && current.activity === item.id));
+
+    const nextSettings: { activity?: string; mood?: string; character?: string; language?: string } = {
+      character: current.character,
+      language: current.language,
+      mood: item.type === 'mood' && !isSelected ? item.id : undefined,
+      activity: item.type === 'activity' && !isSelected ? item.id : undefined,
+    };
+
+    if (!nextSettings.character && !nextSettings.mood && !nextSettings.activity && !nextSettings.language) {
+      startWave();
+    } else {
+      startCustomWave(nextSettings);
     }
   };
 
@@ -264,14 +311,14 @@ export function LandingPage({ onSelectTab }: LandingPageProps) {
         {/* Main Flow Content */}
         <main className="flex-1 flex flex-col gap-section px-page-margin pt-gutter-xs">
           {/* 1. Open Dynamic Wave Stage (Acoustic Orb) */}
-          <section aria-label="Живая Волна" className="relative flex flex-col items-center text-center gap-gutter-lg pt-gutter-sm">
+          <section aria-label="Живая Волна" className="relative flex flex-col items-center text-center gap-gutter-sm pt-gutter-xs">
             {/* Ambient Glow */}
-            <div className="pointer-events-none absolute top-0 left-1/2 -translate-x-1/2 w-64 h-64 rounded-full bg-accent opacity-15 blur-3xl" />
+            <div className="pointer-events-none absolute top-0 left-1/2 -translate-x-1/2 w-72 h-72 rounded-full bg-accent opacity-15 blur-3xl" />
 
-            {/* Visual Acoustic Orb */}
+            {/* Visual Acoustic Orb (Clean, full-width, unclipped, responds to any audio) */}
             <WaveVisualizerOrb
               onTogglePlay={() => {
-                if (waveMode && isPlaying) {
+                if (isPlaying) {
                   togglePlay();
                 } else if (waveMode) {
                   togglePlay();
@@ -279,52 +326,110 @@ export function LandingPage({ onSelectTab }: LandingPageProps) {
                   startWave();
                 }
               }}
-              isPlaying={Boolean(waveMode && isPlaying)}
+              isPlaying={isPlaying}
+              hideCenterButton={true}
             />
 
-            <div className="flex flex-col items-center gap-gutter-xs">
-              <h1 className="font-display text-display-lg-mobile text-dark-on-surface text-balance">
-                Моя Волна
-              </h1>
-              <p className="font-body text-body-sm text-muted text-pretty max-w-xs">
-                Живой поток музыки под ваш текущий ритм
-              </p>
+            {/* Title & Primary Control Bar (Moved below orb for clean core view) */}
+            <div className="flex items-center justify-center gap-3.5 -mt-2 mb-1">
+              <button
+                type="button"
+                onClick={() => {
+                  if (isPlaying) {
+                    togglePlay();
+                  } else if (waveMode) {
+                    togglePlay();
+                  } else {
+                    startWave();
+                  }
+                }}
+                aria-label={isPlaying ? 'Пауза' : 'Включить Мою Волну'}
+                className="w-12 h-12 rounded-full bg-accent text-white flex items-center justify-center shadow-[0_4px_22px_rgba(255,59,92,0.45)] hover:scale-105 active:scale-95 transition-all duration-200 shrink-0 cursor-pointer"
+              >
+                {isPlaying ? (
+                  <Pause size={22} fill="currentColor" />
+                ) : (
+                  <Play size={22} className="ml-0.5" fill="currentColor" />
+                )}
+              </button>
+
+              <div className="flex flex-col text-left">
+                <div className="flex items-center gap-2">
+                  <h1 className="font-display text-display-lg-mobile text-dark-on-surface">
+                    Моя Волна
+                  </h1>
+                  {isPlaying && (
+                    <span className="flex h-2 w-2 relative">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-accent"></span>
+                    </span>
+                  )}
+                </div>
+                <p className="font-body text-body-xs text-muted truncate max-w-[220px]">
+                  {waveMode && waveSettings?.character
+                    ? `${waveSettings.character === 'discover' ? 'Незнакомое' : waveSettings.character === 'popular' ? 'Популярное' : 'Любимое'} · `
+                    : ''}
+                  {isPlaying ? 'Играет персональный поток' : 'Живой поток под ваш ритм'}
+                </p>
+              </div>
             </div>
 
-            {/* Swipeable Mood Chips */}
-            <div className="w-full overflow-x-auto no-scrollbar py-1">
-              <div className="inline-flex items-center gap-gutter-sm px-1" role="group" aria-label="Настроение потока">
-                {MOOD_CHIPS.map((chip) => {
-                  const isPressed = Boolean(
-                    waveMode &&
-                      waveSettings &&
-                      ((chip.opt.mood && waveSettings.mood === chip.opt.mood) ||
-                        (chip.opt.activity && waveSettings.activity === chip.opt.activity) ||
-                        (chip.opt.character && waveSettings.character === chip.opt.character))
-                  );
+            {/* Character & Mood Filter Rows */}
+            <div className="w-full flex flex-col gap-2 pt-1">
+              {/* Row 1: Character (Форма ядра) */}
+              <div className="w-full overflow-x-auto no-scrollbar py-0.5">
+                <div className="inline-flex items-center gap-1.5 px-1" role="group" aria-label="Характер Волны (Форма)">
+                  <span className="text-[11px] font-mono text-muted/70 uppercase tracking-wider pl-1 pr-1 shrink-0">Форма:</span>
+                  {CHARACTER_CHIPS.map((chip) => {
+                    const isPressed = Boolean(waveMode && waveSettings?.character === chip.id);
+                    return (
+                      <button
+                        key={chip.id}
+                        type="button"
+                        aria-pressed={isPressed}
+                        onClick={() => handleToggleCharacter(chip.id)}
+                        className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full border shrink-0 transition-all duration-state-change active:scale-95 ${
+                          isPressed
+                            ? 'bg-accent/20 text-accent border-accent font-semibold shadow-sm'
+                            : 'bg-dark-surface-container-low text-dark-on-surface border-dark-outline-variant hover:border-dark-on-surface/40'
+                        }`}
+                      >
+                        <span className="font-label text-label-sm">{chip.label}</span>
+                        <span className="text-[10px] opacity-60">({chip.desc})</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
 
-                  return (
-                    <button
-                      key={chip.label}
-                      type="button"
-                      aria-pressed={isPressed}
-                      onClick={() => {
-                        if (isPressed) {
-                          startWave();
-                        } else {
-                          startCustomWave(chip.opt);
-                        }
-                      }}
-                      className={`inline-flex items-center px-gutter-lg py-gutter-sm rounded-full border shrink-0 transition-all duration-state-change active:scale-95 ${
-                        isPressed
-                          ? 'bg-accent/15 text-dark-primary border-accent font-semibold shadow-sm'
-                          : 'bg-dark-surface-container-low text-dark-on-surface border-dark-outline-variant hover:border-dark-on-surface/40'
-                      }`}
-                    >
-                      <span className="font-label text-label-md">{chip.label}</span>
-                    </button>
-                  );
-                })}
+              {/* Row 2: Mood & Activity (Цвет ауры) */}
+              <div className="w-full overflow-x-auto no-scrollbar py-0.5">
+                <div className="inline-flex items-center gap-1.5 px-1" role="group" aria-label="Настроение потока (Цвет)">
+                  <span className="text-[11px] font-mono text-muted/70 uppercase tracking-wider pl-1 pr-1 shrink-0">Цвет:</span>
+                  {MOOD_CHIPS.map((chip) => {
+                    const isPressed = Boolean(
+                      waveMode &&
+                        ((chip.type === 'mood' && waveSettings?.mood === chip.id) ||
+                         (chip.type === 'activity' && waveSettings?.activity === chip.id))
+                    );
+
+                    return (
+                      <button
+                        key={chip.id}
+                        type="button"
+                        aria-pressed={isPressed}
+                        onClick={() => handleToggleMood(chip)}
+                        className={`inline-flex items-center px-3 py-1.5 rounded-full border shrink-0 transition-all duration-state-change active:scale-95 ${
+                          isPressed
+                            ? 'bg-accent/20 text-accent border-accent font-semibold shadow-sm'
+                            : 'bg-dark-surface-container-low text-muted hover:text-dark-on-surface border-dark-outline-variant'
+                        }`}
+                      >
+                        <span className="font-label text-label-sm">{chip.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </div>
           </section>
@@ -565,45 +670,90 @@ export function LandingPage({ onSelectTab }: LandingPageProps) {
             {/* Ambient Glow */}
             <div className="pointer-events-none absolute -top-10 -left-10 w-96 h-96 rounded-full bg-accent opacity-10 blur-3xl" />
 
-            <div className="flex-1 z-10 flex flex-col gap-3">
+            <div className="flex-1 z-10 flex flex-col gap-4">
               <div className="flex items-center gap-3">
-                <span className="w-3 h-3 rounded-full bg-accent shadow-[0_0_12px_rgba(255,59,92,0.8)]" />
-                <h2 className="font-display text-2xl font-bold text-dark-on-surface">Моя Волна</h2>
-                {waveMode && isPlaying && (
-                  <span className="text-label-xs font-bold bg-accent text-dark-surface px-2.5 py-0.5 rounded-full shadow-sm">
-                    Сейчас играет
-                  </span>
-                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (isPlaying) {
+                      togglePlay();
+                    } else if (waveMode) {
+                      togglePlay();
+                    } else {
+                      startWave();
+                    }
+                  }}
+                  className="w-12 h-12 rounded-full bg-accent text-white flex items-center justify-center shadow-lg shadow-accent/30 hover:scale-105 active:scale-95 transition-all cursor-pointer shrink-0"
+                  aria-label={isPlaying ? 'Пауза' : 'Воспроизвести'}
+                >
+                  {isPlaying ? <Pause size={22} fill="currentColor" /> : <Play size={22} className="ml-0.5" fill="currentColor" />}
+                </button>
+                <div className="flex items-center gap-3">
+                  <h2 className="font-display text-2xl font-bold text-dark-on-surface">Моя Волна</h2>
+                  {waveMode && isPlaying && (
+                    <span className="text-label-xs font-bold bg-accent text-dark-surface px-2.5 py-0.5 rounded-full shadow-sm animate-pulse">
+                      Сейчас играет
+                    </span>
+                  )}
+                </div>
               </div>
               <p className="text-body-sm text-muted max-w-lg">
-                Бесконечный поток музыки, который подстраивается под ваши вкусы и текущий ритм.
+                Бесконечный живой поток музыки, который подстраивается под ваши вкусы и текущий ритм.
               </p>
 
-              {/* Mood Chips */}
-              <div className="flex flex-wrap gap-2 pt-1">
-                {MOOD_CHIPS.map((chip) => {
-                  const isActive = Boolean(
-                    waveMode &&
-                      waveSettings &&
-                      ((chip.opt.mood && waveSettings.mood === chip.opt.mood) ||
-                        (chip.opt.activity && waveSettings.activity === chip.opt.activity) ||
-                        (chip.opt.character && waveSettings.character === chip.opt.character))
-                  );
-                  return (
-                    <button
-                      key={chip.label}
-                      type="button"
-                      onClick={() => startCustomWave(chip.opt)}
-                      className={`px-3 py-1.5 rounded-full text-label-sm transition-all border active:scale-95 ${
-                        isActive
-                          ? 'bg-accent/20 text-accent border-accent font-semibold shadow-sm'
-                          : 'bg-dark-surface-container-high border-dark-outline-variant text-muted hover:text-dark-on-surface'
-                      }`}
-                    >
-                      {chip.label}
-                    </button>
-                  );
-                })}
+              {/* Desktop Filter Chips */}
+              <div className="flex flex-col gap-2.5 pt-1">
+                {/* Character row */}
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-mono text-muted/70 uppercase tracking-wider shrink-0 w-14">Форма:</span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {CHARACTER_CHIPS.map((chip) => {
+                      const isActive = Boolean(waveMode && waveSettings?.character === chip.id);
+                      return (
+                        <button
+                          key={chip.id}
+                          type="button"
+                          onClick={() => handleToggleCharacter(chip.id)}
+                          className={`px-3 py-1 rounded-full text-label-sm transition-all border active:scale-95 cursor-pointer ${
+                            isActive
+                              ? 'bg-accent/20 text-accent border-accent font-semibold shadow-sm'
+                              : 'bg-dark-surface-container-high border-dark-outline-variant text-muted hover:text-dark-on-surface'
+                          }`}
+                        >
+                          {chip.label} <span className="text-[10px] opacity-60">({chip.desc})</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Mood row */}
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-mono text-muted/70 uppercase tracking-wider shrink-0 w-14">Цвет:</span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {MOOD_CHIPS.map((chip) => {
+                      const isActive = Boolean(
+                        waveMode &&
+                          ((chip.type === 'mood' && waveSettings?.mood === chip.id) ||
+                           (chip.type === 'activity' && waveSettings?.activity === chip.id))
+                      );
+                      return (
+                        <button
+                          key={chip.id}
+                          type="button"
+                          onClick={() => handleToggleMood(chip)}
+                          className={`px-3 py-1 rounded-full text-label-sm transition-all border active:scale-95 cursor-pointer ${
+                            isActive
+                              ? 'bg-accent/20 text-accent border-accent font-semibold shadow-sm'
+                              : 'bg-dark-surface-container-high border-dark-outline-variant text-muted hover:text-dark-on-surface'
+                          }`}
+                        >
+                          {chip.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -611,7 +761,7 @@ export function LandingPage({ onSelectTab }: LandingPageProps) {
             <div className="w-72 h-72 lg:w-84 lg:h-84 shrink-0 relative flex items-center justify-center z-10 overflow-visible">
               <WaveVisualizerOrb
                 onTogglePlay={() => {
-                  if (waveMode && isPlaying) {
+                  if (isPlaying) {
                     togglePlay();
                   } else if (waveMode) {
                     togglePlay();
@@ -619,7 +769,7 @@ export function LandingPage({ onSelectTab }: LandingPageProps) {
                     startWave();
                   }
                 }}
-                isPlaying={Boolean(waveMode && isPlaying)}
+                isPlaying={isPlaying}
               />
             </div>
           </section>
