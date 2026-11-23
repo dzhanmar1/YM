@@ -31,6 +31,7 @@ import { MobileQueueModal } from './mobile/MobileQueueModal';
 import { DynamicTrackWaveform } from './DynamicTrackWaveform';
 import { formatCoverUrl, formatDuration } from '../types';
 import { invoke, isTauri } from '@tauri-apps/api/core';
+import { triggerHaptic } from '../utils/haptics';
 
 export function ImmersiveNowPlaying() {
   const isMobile = useIsMobile();
@@ -146,18 +147,269 @@ export function ImmersiveNowPlaying() {
     seek(finalRatio * (duration || 1));
   };
 
-  // Swipe down on header to dismiss
-  const touchStartY = useRef<number | null>(null);
-  const handleHeaderTouchStart = (e: React.TouchEvent) => {
-    touchStartY.current = e.touches[0].clientY;
+  // Mobile Player Drag-to-Dismiss Gesture
+  const mobilePlayerRef = useRef<HTMLDivElement | null>(null);
+  const dismissGesture = useRef({
+    startY: 0,
+    startX: 0,
+    currentY: 0,
+    isDragging: false,
+    direction: null as 'horizontal' | 'vertical' | null,
+    thresholdCrossed: false,
+    recentTouches: [] as Array<{ y: number; t: number }>,
+    rafId: 0,
+  });
+
+  const handleMobileTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length !== 1) return;
+    const touch = e.touches[0];
+    const now = performance.now();
+    const state = dismissGesture.current;
+    state.startY = touch.clientY;
+    state.startX = touch.clientX;
+    state.currentY = touch.clientY;
+    state.isDragging = false;
+    state.direction = null;
+    state.thresholdCrossed = false;
+    state.recentTouches = [{ y: touch.clientY, t: now }];
+
+    if (mobilePlayerRef.current) {
+      mobilePlayerRef.current.style.transition = 'none';
+      mobilePlayerRef.current.style.willChange = 'transform, border-radius';
+    }
   };
-  const handleHeaderTouchEnd = (e: React.TouchEvent) => {
-    if (touchStartY.current !== null) {
-      const diffY = e.changedTouches[0].clientY - touchStartY.current;
-      if (diffY > 60) {
-        setNowPlayingOpen(false);
+
+  const handleMobileTouchMove = (e: React.TouchEvent) => {
+    if (e.touches.length !== 1) return;
+    const touch = e.touches[0];
+    const state = dismissGesture.current;
+    const now = performance.now();
+    state.currentY = touch.clientY;
+    state.recentTouches.push({ y: touch.clientY, t: now });
+    if (state.recentTouches.length > 5) state.recentTouches.shift();
+
+    const dy = touch.clientY - state.startY;
+    const dx = touch.clientX - state.startX;
+
+    if (state.direction === null) {
+      const absX = Math.abs(dx);
+      const absY = Math.abs(dy);
+      if (absX > 8 || absY > 8) {
+        state.direction = absY > absX ? 'vertical' : 'horizontal';
+        state.isDragging = state.direction === 'vertical';
+      } else {
+        return;
       }
-      touchStartY.current = null;
+    }
+
+    if (!state.isDragging || state.direction !== 'vertical') return;
+
+    if (e.cancelable) e.preventDefault();
+
+    let visualY = dy;
+    if (dy < 0) {
+      // Rubber-band when pulling up
+      visualY = -Math.pow(Math.abs(dy), 0.65) * 2;
+    }
+
+    const threshold = 110;
+    const isPast = visualY >= threshold;
+    if (isPast && !state.thresholdCrossed) {
+      state.thresholdCrossed = true;
+      triggerHaptic('selection');
+    } else if (!isPast && state.thresholdCrossed) {
+      state.thresholdCrossed = false;
+    }
+
+    if (state.rafId) cancelAnimationFrame(state.rafId);
+    state.rafId = requestAnimationFrame(() => {
+      if (mobilePlayerRef.current) {
+        const scale = Math.max(0.9, 1 - (Math.max(0, visualY) / 800) * 0.1);
+        const radius = Math.min(32, (Math.max(0, visualY) / 100) * 32);
+        mobilePlayerRef.current.style.transform = `translate3d(0, ${Math.max(-25, visualY)}px, 0) scale(${scale})`;
+        mobilePlayerRef.current.style.borderRadius = `${radius}px`;
+      }
+    });
+  };
+
+  const handleMobileTouchEnd = () => {
+    const state = dismissGesture.current;
+    if (!state.isDragging) return;
+    state.isDragging = false;
+    if (state.rafId) cancelAnimationFrame(state.rafId);
+
+    let vy = 0;
+    if (state.recentTouches.length >= 2) {
+      const first = state.recentTouches[0];
+      const last = state.recentTouches[state.recentTouches.length - 1];
+      const dt = Math.max(1, last.t - first.t);
+      vy = (last.y - first.y) / dt;
+    }
+
+    const dy = state.currentY - state.startY;
+    const isQuickFlickDown = vy > 0.5 && dy > 30;
+    const reachedThreshold = dy >= 110;
+
+    if (reachedThreshold || isQuickFlickDown) {
+      triggerHaptic('medium');
+      if (mobilePlayerRef.current) {
+        mobilePlayerRef.current.style.transition = 'transform 0.22s cubic-bezier(0.32, 0, 0.67, 0), opacity 0.2s';
+        mobilePlayerRef.current.style.transform = 'translate3d(0, 100%, 0) scale(0.9)';
+        mobilePlayerRef.current.style.opacity = '0';
+      }
+      setTimeout(() => {
+        setNowPlayingOpen(false);
+      }, 200);
+    } else {
+      if (mobilePlayerRef.current) {
+        mobilePlayerRef.current.style.transition = 'transform 0.28s cubic-bezier(0.18, 0.89, 0.32, 1.15), border-radius 0.24s';
+        mobilePlayerRef.current.style.transform = 'translate3d(0, 0, 0) scale(1)';
+        mobilePlayerRef.current.style.borderRadius = '0px';
+      }
+    }
+  };
+
+  // Cover Art Horizontal Track Swipe Gesture
+  const coverStageRef = useRef<HTMLDivElement | null>(null);
+  const coverGesture = useRef({
+    startX: 0,
+    startY: 0,
+    currentX: 0,
+    isDragging: false,
+    directionLocked: false,
+    thresholdCrossed: false,
+    recentTouches: [] as Array<{ x: number; t: number }>,
+    rafId: 0,
+  });
+
+  const handleCoverTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length !== 1) return;
+    const touch = e.touches[0];
+    const now = performance.now();
+    const state = coverGesture.current;
+    state.startX = touch.clientX;
+    state.startY = touch.clientY;
+    state.currentX = touch.clientX;
+    state.isDragging = false;
+    state.directionLocked = false;
+    state.thresholdCrossed = false;
+    state.recentTouches = [{ x: touch.clientX, t: now }];
+
+    if (coverStageRef.current) {
+      coverStageRef.current.style.transition = 'none';
+      coverStageRef.current.style.willChange = 'transform, opacity';
+    }
+  };
+
+  const handleCoverTouchMove = (e: React.TouchEvent) => {
+    if (e.touches.length !== 1) return;
+    const touch = e.touches[0];
+    const state = coverGesture.current;
+    const now = performance.now();
+    state.currentX = touch.clientX;
+    state.recentTouches.push({ x: touch.clientX, t: now });
+    if (state.recentTouches.length > 5) state.recentTouches.shift();
+
+    const dx = touch.clientX - state.startX;
+    const dy = touch.clientY - state.startY;
+
+    if (!state.directionLocked) {
+      const absX = Math.abs(dx);
+      const absY = Math.abs(dy);
+      if (absX > 8 || absY > 8) {
+        state.directionLocked = true;
+        state.isDragging = absX > absY;
+      } else {
+        return;
+      }
+    }
+
+    if (!state.isDragging) return;
+
+    // Prevent vertical parent dismiss when dragging cover horizontally
+    e.stopPropagation();
+
+    const visualDx = Math.sign(dx) * Math.pow(Math.abs(dx), 0.85) * 1.5;
+    const absDist = Math.abs(dx);
+    const threshold = 75;
+
+    if (absDist >= threshold && !state.thresholdCrossed) {
+      state.thresholdCrossed = true;
+      triggerHaptic('selection');
+    } else if (absDist < threshold && state.thresholdCrossed) {
+      state.thresholdCrossed = false;
+    }
+
+    if (state.rafId) cancelAnimationFrame(state.rafId);
+    state.rafId = requestAnimationFrame(() => {
+      if (coverStageRef.current) {
+        const rot = visualDx * 0.04;
+        const opacity = Math.max(0.65, 1 - (absDist / 350) * 0.35);
+        coverStageRef.current.style.transform = `translate3d(${visualDx}px, 0, 0) rotateZ(${rot}deg)`;
+        coverStageRef.current.style.opacity = `${opacity}`;
+      }
+    });
+  };
+
+  const handleCoverTouchEnd = (e: React.TouchEvent) => {
+    const state = coverGesture.current;
+    if (!state.isDragging) return;
+    state.isDragging = false;
+    e.stopPropagation();
+
+    if (state.rafId) cancelAnimationFrame(state.rafId);
+
+    let vx = 0;
+    if (state.recentTouches.length >= 2) {
+      const first = state.recentTouches[0];
+      const last = state.recentTouches[state.recentTouches.length - 1];
+      const dt = Math.max(1, last.t - first.t);
+      vx = (last.x - first.x) / dt;
+    }
+
+    const dx = state.currentX - state.startX;
+    const absDx = Math.abs(dx);
+    const isFlick = Math.abs(vx) > 0.45 && absDx > 25;
+    const reachedThreshold = absDx >= 75;
+
+    if (reachedThreshold || isFlick) {
+      const goingNext = dx < 0 || (isFlick && vx < 0);
+      triggerHaptic('light');
+
+      if (coverStageRef.current) {
+        coverStageRef.current.style.transition = 'transform 0.18s cubic-bezier(0.3, 0, 0.8, 0.15), opacity 0.18s';
+        coverStageRef.current.style.transform = `translate3d(${goingNext ? '-120%' : '120%'}, 0, 0) rotateZ(${goingNext ? '-10' : '10'}deg)`;
+        coverStageRef.current.style.opacity = '0';
+      }
+
+      setTimeout(() => {
+        if (goingNext) {
+          playNext();
+        } else {
+          playPrev();
+        }
+
+        if (coverStageRef.current) {
+          coverStageRef.current.style.transition = 'none';
+          coverStageRef.current.style.transform = `translate3d(${goingNext ? '60%' : '-60%'}, 0, 0) rotateZ(${goingNext ? '6' : '-6'}deg)`;
+          coverStageRef.current.style.opacity = '0.3';
+
+          requestAnimationFrame(() => {
+            if (coverStageRef.current) {
+              coverStageRef.current.style.transition = 'transform 0.28s cubic-bezier(0.18, 0.89, 0.32, 1.15), opacity 0.24s';
+              coverStageRef.current.style.transform = 'translate3d(0, 0, 0) rotateZ(0deg)';
+              coverStageRef.current.style.opacity = '1';
+            }
+          });
+        }
+      }, 160);
+    } else {
+      // Snap back to center
+      if (coverStageRef.current) {
+        coverStageRef.current.style.transition = 'transform 0.26s cubic-bezier(0.18, 0.89, 0.32, 1.15), opacity 0.2s';
+        coverStageRef.current.style.transform = 'translate3d(0, 0, 0) rotateZ(0deg)';
+        coverStageRef.current.style.opacity = '1';
+      }
     }
   };
 
@@ -194,9 +446,12 @@ export function ImmersiveNowPlaying() {
           <MobileQueueModal onBackToPlayer={() => setMobileTab('player')} />
         ) : (
           <div
-            className="h-full w-full max-w-lg mx-auto flex flex-col justify-between relative overflow-hidden px-page-margin pt-gutter-md pb-gutter-xl select-none"
-            onTouchStart={handleHeaderTouchStart}
-            onTouchEnd={handleHeaderTouchEnd}
+            ref={mobilePlayerRef}
+            className="h-full w-full max-w-lg mx-auto flex flex-col justify-between relative overflow-hidden px-page-margin pt-gutter-md pb-gutter-xl select-none touch-pan-y"
+            onTouchStart={handleMobileTouchStart}
+            onTouchMove={handleMobileTouchMove}
+            onTouchEnd={handleMobileTouchEnd}
+            onTouchCancel={handleMobileTouchEnd}
           >
             {/* Ambient Cover Glow */}
             <div className="pointer-events-none absolute -top-20 left-1/2 -translate-x-1/2 w-96 h-96 rounded-full bg-accent opacity-15 blur-3xl" />
@@ -226,15 +481,24 @@ export function ImmersiveNowPlaying() {
 
             {/* Expansive Cover Artwork Stage */}
             <main className="relative z-10 flex flex-col gap-gutter-lg my-auto py-gutter-md">
-              <div className="w-full aspect-square max-w-[340px] mx-auto rounded-xl overflow-hidden bg-dark-surface-container shadow-2xl border border-dark-outline-variant">
+              <div
+                ref={coverStageRef}
+                onTouchStart={handleCoverTouchStart}
+                onTouchMove={handleCoverTouchMove}
+                onTouchEnd={handleCoverTouchEnd}
+                onTouchCancel={handleCoverTouchEnd}
+                className="w-full aspect-square max-w-[340px] mx-auto rounded-xl overflow-hidden bg-dark-surface-container shadow-2xl border border-dark-outline-variant select-none"
+                style={{ willChange: 'transform, opacity' }}
+                aria-label="Обложка трека (свайп влево/вправо для переключения трека)"
+              >
                 {coverUrl ? (
                   <img
                     src={coverUrl}
                     alt={currentTrack?.title || ''}
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-cover pointer-events-none"
                   />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-accent">
+                  <div className="w-full h-full flex items-center justify-center text-accent pointer-events-none">
                     <Disc size={64} />
                   </div>
                 )}
@@ -284,7 +548,10 @@ export function ImmersiveNowPlaying() {
             </main>
 
             {/* Thumb-Zone Controls & Waveform Scrubber */}
-            <footer className="relative z-10 flex flex-col gap-gutter-lg shrink-0">
+            <footer
+              className="relative z-10 flex flex-col gap-gutter-lg shrink-0"
+              onTouchStart={(e) => e.stopPropagation()}
+            >
               {/* Dynamic Waveform Progress */}
               <div className="flex flex-col gap-gutter-xs">
                 <DynamicTrackWaveform

@@ -1,12 +1,22 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { X, Settings } from 'lucide-react';
 import { useWindowStore } from '../store/windowStore';
 import { useIsMobile } from '../hooks/useIsMobile';
+import { useDraggableSheet } from '../hooks/useDraggableSheet';
 import { SettingsPage } from '../pages/SettingsPage';
 
 export function SettingsModal() {
   const isMobile = useIsMobile();
   const { settingsOpen, setSettingsOpen } = useWindowStore();
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+
+  const { sheetRef } = useDraggableSheet({
+    isOpen: settingsOpen && isMobile,
+    onDismiss: () => setSettingsOpen(false),
+    scrollContainerRef,
+    dragHandleSelector: '.sheet-drag-handle',
+    threshold: 85,
+  });
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -26,8 +36,10 @@ export function SettingsModal() {
       onClick={() => setSettingsOpen(false)}
     >
       <div
+        ref={isMobile ? sheetRef : undefined}
         onClick={(e) => e.stopPropagation()}
-        className={`w-full sm:max-w-2xl bg-dark-surface border border-dark-outline-variant/40 shadow-2xl flex flex-col overflow-hidden text-dark-on-surface ${
+        style={{ willChange: isMobile ? 'transform' : 'auto' }}
+        className={`w-full sm:max-w-2xl bg-dark-surface border border-dark-outline-variant/40 shadow-2xl flex flex-col overflow-hidden text-dark-on-surface overscroll-contain ${
           isMobile
             ? 'rounded-t-3xl h-[88vh] animate-sheet-up pb-[calc(18px+var(--sab,0px))]'
             : 'rounded-2xl h-[84vh] max-h-[800px]'
@@ -35,13 +47,13 @@ export function SettingsModal() {
       >
         {/* Mobile Swipe Handle */}
         {isMobile && (
-          <div className="flex justify-center pt-3 pb-1 shrink-0">
+          <div className="sheet-drag-handle flex justify-center pt-3 pb-1 shrink-0 cursor-grab">
             <span className="w-10 h-1 rounded-full bg-dark-outline-variant hover:bg-muted transition-colors" />
           </div>
         )}
 
         {/* Modal Header */}
-        <div className="h-14 px-5 border-b border-dark-outline-variant/30 flex items-center justify-between shrink-0">
+        <div className="sheet-drag-handle h-14 px-5 border-b border-dark-outline-variant/30 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-full bg-accent/20 border border-accent/40 flex items-center justify-center text-accent">
               <Settings size={16} />
@@ -62,7 +74,7 @@ export function SettingsModal() {
         </div>
 
         {/* Modal Body: Settings Content */}
-        <div className="flex-1 overflow-y-auto no-scrollbar">
+        <div ref={scrollContainerRef} className="flex-1 overflow-y-auto no-scrollbar">
           <SettingsPage />
         </div>
       </div>

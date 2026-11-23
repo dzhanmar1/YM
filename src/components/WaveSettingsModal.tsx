@@ -16,6 +16,7 @@ import {
 import { useWindowStore } from '../store/windowStore';
 import { usePlayerStore } from '../store/playerStore';
 import { useIsMobile } from '../hooks/useIsMobile';
+import { useDraggableSheet } from '../hooks/useDraggableSheet';
 
 const ACTIVITIES = [
   { id: 'work-background', label: 'Работа', icon: '💼' },
@@ -54,6 +55,12 @@ export const WaveSettingsModal: React.FC = () => {
   const [selectedMood, setSelectedMood] = useState<string | null>(null);
   const [selectedLanguage, setSelectedLanguage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  const { sheetRef } = useDraggableSheet({
+    isOpen: waveSettingsOpen && isMobile,
+    onDismiss: () => setWaveSettingsOpen(false),
+    threshold: 85,
+  });
 
   useEffect(() => {
     if (!waveSettingsOpen) return;
@@ -131,8 +138,10 @@ export const WaveSettingsModal: React.FC = () => {
       onClick={() => setWaveSettingsOpen(false)}
     >
       <div
+        ref={isMobile ? sheetRef : undefined}
         onClick={(e) => e.stopPropagation()}
-        className={`w-full sm:max-w-lg bg-dark-surface border border-dark-outline-variant/40 shadow-2xl flex flex-col gap-5 overflow-y-auto no-scrollbar text-dark-on-surface ${
+        style={{ willChange: isMobile ? 'transform' : 'auto' }}
+        className={`w-full sm:max-w-lg bg-dark-surface border border-dark-outline-variant/40 shadow-2xl flex flex-col gap-5 overflow-y-auto no-scrollbar text-dark-on-surface overscroll-contain ${
           isMobile
             ? 'rounded-t-3xl max-h-[90vh] animate-sheet-up pb-[calc(18px+var(--sab,0px))] px-5 pt-3'
             : 'rounded-2xl max-h-[88vh] p-6'

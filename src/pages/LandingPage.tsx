@@ -377,7 +377,7 @@ export function LandingPage({ onSelectTab }: LandingPageProps) {
             {/* Character & Mood Filter Rows */}
             <div className="w-full flex flex-col gap-2 pt-1">
               {/* Row 1: Character (Форма ядра) */}
-              <div className="w-full overflow-x-auto no-scrollbar py-0.5">
+              <div className="w-full overflow-x-auto no-scrollbar py-0.5 overscroll-x-contain touch-pan-x">
                 <div className="inline-flex items-center gap-1.5 px-1" role="group" aria-label="Характер Волны (Форма)">
                   <span className="text-[11px] font-mono text-muted/70 uppercase tracking-wider pl-1 pr-1 shrink-0">Форма:</span>
                   {CHARACTER_CHIPS.map((chip) => {
@@ -403,7 +403,7 @@ export function LandingPage({ onSelectTab }: LandingPageProps) {
               </div>
 
               {/* Row 2: Mood & Activity (Цвет ауры) */}
-              <div className="w-full overflow-x-auto no-scrollbar py-0.5">
+              <div className="w-full overflow-x-auto no-scrollbar py-0.5 overscroll-x-contain touch-pan-x">
                 <div className="inline-flex items-center gap-1.5 px-1" role="group" aria-label="Настроение потока (Цвет)">
                   <span className="text-[11px] font-mono text-muted/70 uppercase tracking-wider pl-1 pr-1 shrink-0">Цвет:</span>
                   {MOOD_CHIPS.map((chip) => {

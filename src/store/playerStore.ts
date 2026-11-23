@@ -37,6 +37,8 @@ interface PlayerState {
   setQueue: (queue: TrackItem[], index?: number) => void;
   moveQueueItem: (fromIndex: number, toIndex: number) => void;
   removeFromQueue: (index: number) => void;
+  addToQueue: (track: TrackItem) => void;
+  playNextInQueue: (track: TrackItem) => void;
   playNext: () => Promise<void>;
   playPrev: () => void;
   togglePlay: () => void;
@@ -227,6 +229,21 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     }
     set({ queue: newQueue, queueIndex: newQueueIndex });
     savePlayerState({ queue: newQueue, queueIndex: newQueueIndex });
+  },
+
+  addToQueue: (track: TrackItem) => {
+    const { queue } = get();
+    const newQueue = [...queue, track];
+    set({ queue: newQueue });
+    savePlayerState({ queue: newQueue });
+  },
+
+  playNextInQueue: (track: TrackItem) => {
+    const { queue, queueIndex } = get();
+    const nextQueue = [...queue];
+    nextQueue.splice(queueIndex + 1, 0, track);
+    set({ queue: nextQueue });
+    savePlayerState({ queue: nextQueue });
   },
 
   playNext: async () => {

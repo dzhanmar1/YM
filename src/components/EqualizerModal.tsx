@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { X, RotateCcw, Volume2, Sliders } from 'lucide-react';
 import { useEqualizerStore, EQ_FREQUENCIES, EQ_PRESETS } from '../store/equalizerStore';
 import { useIsMobile } from '../hooks/useIsMobile';
+import { useDraggableSheet } from '../hooks/useDraggableSheet';
 import { EqualizerPreset } from '../types';
 import { audioVisualizer } from '../utils/audioVisualizer';
 
@@ -31,6 +32,13 @@ export const EqualizerModal: React.FC = () => {
     setModalOpen,
     reset,
   } = useEqualizerStore();
+
+  const { sheetRef } = useDraggableSheet({
+    isOpen: modalOpen && isMobile,
+    onDismiss: () => setModalOpen(false),
+    threshold: 80,
+    dragHandleSelector: '.sheet-drag-handle',
+  });
 
   const spectrumCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
@@ -112,8 +120,10 @@ export const EqualizerModal: React.FC = () => {
       onClick={() => setModalOpen(false)}
     >
       <div
+        ref={isMobile ? sheetRef : undefined}
         onClick={(e) => e.stopPropagation()}
-        className={`w-full sm:max-w-2xl bg-dark-surface border border-dark-outline-variant/40 shadow-2xl flex flex-col gap-4 overflow-hidden text-dark-on-surface ${
+        style={{ willChange: isMobile ? 'transform' : 'auto' }}
+        className={`w-full sm:max-w-2xl bg-dark-surface border border-dark-outline-variant/40 shadow-2xl flex flex-col gap-4 overflow-hidden text-dark-on-surface overscroll-contain ${
           isMobile
             ? 'rounded-t-3xl max-h-[92vh] animate-sheet-up pb-[calc(18px+var(--sab,0px))] px-5 pt-3'
             : 'rounded-2xl max-h-[90vh] p-6'
@@ -121,13 +131,13 @@ export const EqualizerModal: React.FC = () => {
       >
         {/* Mobile Swipe / Drag Indicator */}
         {isMobile && (
-          <div className="flex justify-center pb-1">
+          <div className="sheet-drag-handle flex justify-center pb-1 pt-1 cursor-grab">
             <span className="w-10 h-1 rounded-full bg-dark-outline-variant hover:bg-muted transition-colors" />
           </div>
         )}
 
         {/* Header Block */}
-        <div className="flex items-center justify-between border-b border-dark-outline-variant/30 pb-3">
+        <div className="sheet-drag-handle flex items-center justify-between border-b border-dark-outline-variant/30 pb-3">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-full bg-accent/20 border border-accent/40 flex items-center justify-center text-accent">
               <Sliders size={18} />

@@ -1,7 +1,8 @@
 import React, { useRef, useEffect } from 'react';
-import { Play, Pause, Disc, Radio, Shuffle, ArrowLeft, Volume2 } from 'lucide-react';
+import { Play, Pause, Disc, Radio, Shuffle, ArrowLeft, Volume2, Trash2 } from 'lucide-react';
 import { usePlayerStore } from '../../store/playerStore';
 import { formatCoverUrl, formatDuration } from '../../types';
+import { useDraggableSheet } from '../../hooks/useDraggableSheet';
 
 interface MobileQueueModalProps {
   onBackToPlayer: () => void;
@@ -21,6 +22,13 @@ export function MobileQueueModal({ onBackToPlayer }: MobileQueueModalProps) {
   } = usePlayerStore();
 
   const activeTrackRef = useRef<HTMLLIElement | null>(null);
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+
+  const { sheetRef } = useDraggableSheet({
+    onDismiss: onBackToPlayer,
+    scrollContainerRef,
+    threshold: 90,
+  });
 
   // Auto-scroll to active track in queue
   useEffect(() => {
@@ -33,7 +41,11 @@ export function MobileQueueModal({ onBackToPlayer }: MobileQueueModalProps) {
   }, [queueIndex]);
 
   return (
-    <div className="h-full w-full max-w-lg mx-auto flex flex-col justify-between relative overflow-hidden bg-dark-surface text-dark-on-surface antialiased select-none">
+    <div
+      ref={sheetRef}
+      className="h-full w-full max-w-lg mx-auto flex flex-col justify-between relative overflow-hidden bg-dark-surface text-dark-on-surface antialiased select-none overscroll-contain"
+      style={{ willChange: 'transform' }}
+    >
       {/* Soft Ambient Glow */}
       <div className="pointer-events-none fixed top-1/4 left-1/2 -translate-x-1/2 w-80 h-80 rounded-full bg-accent opacity-10 blur-3xl" />
 
@@ -79,7 +91,10 @@ export function MobileQueueModal({ onBackToPlayer }: MobileQueueModalProps) {
       </header>
 
       {/* Queue Track List */}
-      <main className="relative z-10 flex-1 px-page-margin py-gutter-md overflow-y-auto no-scrollbar">
+      <main
+        ref={scrollContainerRef}
+        className="relative z-10 flex-1 px-page-margin py-gutter-md overflow-y-auto no-scrollbar"
+      >
         {queue.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-64 text-center text-muted font-mono text-body-sm">
             Очередь пуста

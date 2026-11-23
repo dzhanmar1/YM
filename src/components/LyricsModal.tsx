@@ -3,6 +3,7 @@ import { Play, Pause, Disc, Quote, Mic2, Radio, Check } from 'lucide-react';
 import { usePlayerStore } from '../store/playerStore';
 import { useLyricsStore } from '../store/lyricsStore';
 import { formatCoverUrl } from '../types';
+import { useDraggableSheet } from '../hooks/useDraggableSheet';
 
 interface LyricsModalProps {
   onBackToPlayer?: () => void;
@@ -44,8 +45,18 @@ export function LyricsModal({ onBackToPlayer }: LyricsModalProps) {
     }).catch(() => {});
   };
 
+  const { sheetRef } = useDraggableSheet({
+    onDismiss: () => onBackToPlayer?.(),
+    scrollContainerRef,
+    threshold: 90,
+  });
+
   return (
-    <div className="h-full w-full max-w-md mx-auto flex flex-col justify-between relative overflow-hidden bg-dark-surface text-dark-on-surface antialiased select-none">
+    <div
+      ref={sheetRef}
+      className="h-full w-full max-w-md mx-auto flex flex-col justify-between relative overflow-hidden bg-dark-surface text-dark-on-surface antialiased select-none overscroll-contain"
+      style={{ willChange: 'transform' }}
+    >
       {/* Soft Ambient Glow */}
       <div className="pointer-events-none fixed top-1/3 left-1/2 -translate-x-1/2 w-80 h-80 rounded-full bg-accent opacity-10 blur-3xl" />
 
